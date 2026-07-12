@@ -1,0 +1,33 @@
+name: Auto-merge
+
+# Arms squash auto-merge on routine PRs (feat/* and fix/* branches) so GitHub
+# merges them automatically the moment their required checks pass and the PR is
+# mergeable. This is independent of whether the issue-processor routine managed
+# to arm auto-merge itself, so PRs never stall waiting for a manual merge.
+#
+# Requires (already configured on this repo):
+#   - "Allow auto-merge" enabled in repo settings
+#   - Branch protection on main requiring the "Unit Tests" check
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    # Only routine-generated branches; never human PRs from other prefixes.
+    if: >-
+      !github.event.pull_request.draft &&
+      (startsWith(github.head_ref, 'feat/') || startsWith(github.head_ref, 'fix/'))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Enable squash auto-merge
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr merge "${{ github.event.pull_request.number }}" \
+            --auto --squash \
+            --repo "${{ github.repository }}"
