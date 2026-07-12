@@ -7,6 +7,9 @@ on:
   push:
     branches:
       - main
+  # Manual trigger: lets us validate the full pipeline on demand — needed
+  # because PRs auto-merged via GITHUB_TOKEN don't fire the push trigger.
+  workflow_dispatch: {}
 
 concurrency:
   group: main-ci-${{ github.ref }}
