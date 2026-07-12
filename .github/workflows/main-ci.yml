@@ -116,3 +116,68 @@ jobs:
       - name: Assemble debug artifacts
         if: steps.gradle_check.outputs.exists == 'true'
         run: ./gradlew assembleDebug --stacktrace
+
+  distribute-android:
+    name: Distribute Android (Firebase App Distribution)
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Check for Gradle wrapper
+        id: gradle_check
+        run: |
+          if [ -f ./gradlew ]; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+
+      - name: Assemble debug APK
+        if: steps.gradle_check.outputs.exists == 'true'
+        run: ./gradlew :androidApp:assembleDebug --stacktrace
+
+      - name: Locate debug APK
+        id: apk
+        if: steps.gradle_check.outputs.exists == 'true'
+        run: |
+          APK=$(find androidApp/build/outputs/apk/debug -name "*.apk" | head -n1)
+          echo "path=$APK" >> "$GITHUB_OUTPUT"
+          echo "::notice::Debug APK: $APK"
+
+      # Always publish the APK as a workflow artifact so it can be downloaded
+      # from the Actions run even before Firebase App Distribution is configured.
+      - name: Upload debug APK artifact
+        if: steps.gradle_check.outputs.exists == 'true' && steps.apk.outputs.path != ''
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-debug-apk
+          path: ${{ steps.apk.outputs.path }}
+          if-no-files-found: warn
+
+      # Skip the Firebase upload gracefully until the two secrets are set.
+      - name: Check Firebase App Distribution secrets
+        id: fb
+        env:
+          APP_ID: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          SVC: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: |
+          if [ -n "$APP_ID" ] && [ -n "$SVC" ]; then
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::Firebase App Distribution secrets not set — skipping upload. The APK is still available as the 'app-debug-apk' artifact. See docs/APP_DISTRIBUTION.md."
+          fi
+
+      - name: Distribute to Firebase App Distribution
+        if: steps.gradle_check.outputs.exists == 'true' && steps.fb.outputs.ready == 'true' && steps.apk.outputs.path != ''
+        uses: wzieba/Firebase-Distribution-Github-Action@v1
+        with:
+          appId: ${{ secrets.FIREBASE_ANDROID_APP_ID }}
+          serviceCredentialsFileContent: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          groups: testers
+          releaseNotes: ${{ github.event.head_commit.message }}
+          file: ${{ steps.apk.outputs.path }}
