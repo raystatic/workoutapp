@@ -1,7 +1,19 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
+
 plugins {
     alias(libs.plugins.androidApplication)
     alias(libs.plugins.kotlinAndroid)
     alias(libs.plugins.composeCompiler)
+}
+
+// Pin Kotlin's JVM target to 17 so it always matches the Java target below,
+// independent of the JDK the build runs on (CI's instrumentation job runs on
+// JDK 21 for firebase-tools; without this, Kotlin would target 21 and clash
+// with compileDebugJavaWithJavac at 17).
+kotlin {
+    compilerOptions {
+        jvmTarget.set(JvmTarget.JVM_17)
+    }
 }
 
 android {
