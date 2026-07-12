@@ -42,11 +42,15 @@ jobs:
         api-level: [34]
     steps:
       - uses: actions/checkout@v4
-      - name: Set up JDK 17
+      # firebase-tools requires a Java 21+ runtime for the emulators, so this
+      # job runs on JDK 21. The project's Kotlin/Android compile toolchain stays
+      # pinned at 17 (via jvmToolchain + foojay auto-provisioning); Gradle 8.9
+      # and AGP 8.7 run fine on JDK 21.
+      - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: "21"
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
