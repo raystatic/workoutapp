@@ -3,9 +3,9 @@ package com.workoutapp.android
 import androidx.lifecycle.Lifecycle
 import androidx.test.core.app.ActivityScenario
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertEquals
 import org.junit.Test
 import org.junit.runner.RunWith
-import kotlin.test.assertEquals
 
 /**
  * Smoke connectedDebugAndroidTest: launches MainActivity and asserts it
