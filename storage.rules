@@ -1,0 +1,13 @@
+rules_version = '2';
+// Baseline Storage rules for progress photos / workout media.
+// Instrumentation tests exercise these against the Firebase emulator.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

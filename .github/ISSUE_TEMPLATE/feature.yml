@@ -1,0 +1,46 @@
+name: "✨ Feature"
+description: A user-facing capability.
+title: "[Feature]: "
+labels: ["type:feature", "status:pending"]
+body:
+  - type: input
+    id: phase
+    attributes:
+      label: Phase / Epic
+      placeholder: "Phase 1 — Logging-First MVP"
+    validations:
+      required: true
+  - type: textarea
+    id: user-story
+    attributes:
+      label: User story
+      description: As a <user>, I want <goal>, so that <benefit>.
+    validations:
+      required: true
+  - type: textarea
+    id: requirements
+    attributes:
+      label: Requirements
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] Behaviour implemented as described
+        - [ ] Unit tests cover the logic
+        - [ ] Instrumentation tests cover the UI flow
+        - [ ] CI green
+    validations:
+      required: true
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing notes
+      description: Unit + instrumentation coverage. Note any Firebase emulator usage.
+    validations:
+      required: true

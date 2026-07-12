@@ -1,0 +1,38 @@
+name: "🐛 Bug"
+description: Something is broken or behaves incorrectly.
+title: "[Bug]: "
+labels: ["type:bug", "status:pending"]
+body:
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: Describe the bug and the expected behaviour.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      value: |
+        1.
+        2.
+        3.
+    validations:
+      required: true
+  - type: input
+    id: platform
+    attributes:
+      label: Platform
+      placeholder: "Android 14 / iOS 17 / both"
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] Root cause identified
+        - [ ] Fix implemented
+        - [ ] Regression test added (unit and/or instrumentation)
+        - [ ] CI green
+    validations:
+      required: true

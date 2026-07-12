@@ -1,0 +1,20 @@
+name: "📝 Documentation"
+description: Docs to write or update.
+title: "[Docs]: "
+labels: ["type:docs", "status:pending"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What needs documenting?
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] Content written
+        - [ ] Reviewed for accuracy against the code
+    validations:
+      required: true

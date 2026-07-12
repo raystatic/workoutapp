@@ -1,0 +1,55 @@
+name: "🛠️ Task"
+description: A concrete unit of engineering work (feature slice, scaffolding, chore).
+title: "[Task]: "
+labels: ["type:task", "status:pending"]
+body:
+  - type: input
+    id: phase
+    attributes:
+      label: Phase / Epic
+      description: Which roadmap phase or epic does this belong to? (see EXECUTION_PLAN.md)
+      placeholder: "Phase 1 — Logging-First MVP"
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What is this and why does it matter? Link the relevant part of the execution plan.
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope of work
+      description: Concrete, checkable steps to implement this task.
+      value: |
+        - [ ]
+        - [ ]
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: How do we know this is done and correct?
+      value: |
+        - [ ] Behaviour implemented as described
+        - [ ] Unit tests cover the logic
+        - [ ] Instrumentation tests cover UI/integration where applicable
+        - [ ] CI green
+    validations:
+      required: true
+  - type: textarea
+    id: testing
+    attributes:
+      label: Testing notes
+      description: What unit tests and instrumentation tests are required? Any Firebase emulator interactions?
+    validations:
+      required: true
+  - type: input
+    id: depends
+    attributes:
+      label: Depends on
+      description: Issue numbers that must land first (for sequential processing).
+      placeholder: "#1, #2"

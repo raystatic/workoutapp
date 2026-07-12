@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Execution Plan
+    url: https://github.com/raystatic/workoutapp/blob/main/EXECUTION_PLAN.md
+    about: The overall roadmap and phasing for the app.
+  - name: Development Workflow
+    url: https://github.com/raystatic/workoutapp/blob/main/docs/DEVELOPMENT_WORKFLOW.md
+    about: How issues, branches, the routine, and CI fit together.

@@ -1,0 +1,20 @@
+rules_version = '2';
+// Baseline rules. Instrumentation tests run against these in the Firebase
+// emulator. Tighten per-collection as data models land (Phase 2+).
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // A user may only read/write their own document tree.
+    match /users/{userId}/{document=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    // Public profiles and feed posts are world-readable, owner-writable.
+    match /publicProfiles/{userId} {
+      allow read: if true;
+      allow write: if request.auth != null && request.auth.uid == userId;
+    }
+    // Deny everything not explicitly allowed above.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

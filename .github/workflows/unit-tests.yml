@@ -1,0 +1,60 @@
+name: Unit Tests
+
+# Runs on every push to any branch EXCEPT main, and on every PR targeting main.
+# Fast feedback loop: unit tests only. The full pipeline (instrumentation tests,
+# Firebase emulator, build) runs on merge to main — see main-ci.yml.
+on:
+  push:
+    branches-ignore:
+      - main
+  pull_request:
+    branches:
+      - main
+
+concurrency:
+  group: unit-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  unit-tests:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # The Gradle project is added by the "project scaffold" issue. Until then
+      # this guard keeps the workflow green instead of hard-failing on a missing
+      # gradlew. Once scaffolding lands, the tests below run for real.
+      - name: Check for Gradle wrapper
+        id: gradle_check
+        run: |
+          if [ -f ./gradlew ]; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No Gradle wrapper yet — skipping tests until the project is scaffolded."
+          fi
+
+      - name: Run shared + Android unit tests
+        if: steps.gradle_check.outputs.exists == 'true'
+        run: ./gradlew testDebugUnitTest allTests --continue --stacktrace
+
+      - name: Upload test reports
+        if: always() && steps.gradle_check.outputs.exists == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-reports
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
+          if-no-files-found: ignore

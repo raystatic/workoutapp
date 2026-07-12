@@ -1,0 +1,48 @@
+# Gradle / Kotlin
+.gradle/
+build/
+**/build/
+!src/**/build/
+kotlin-js-store/
+.kotlin/
+
+# Android
+local.properties
+*.apk
+*.aab
+*.ap_
+*.dex
+captures/
+.cxx/
+
+# IntelliJ / Android Studio
+.idea/
+*.iml
+*.ipr
+*.iws
+out/
+
+# Xcode / iOS
+iosApp/build/
+*.xcworkspace/xcuserdata/
+*.xcodeproj/xcuserdata/
+xcuserdata/
+Pods/
+.DS_Store
+
+# Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+*-debug.log
+
+# Node (Firebase CLI helpers)
+node_modules/
+
+# Secrets / signing
+*.keystore
+*.jks
+google-services.json
+GoogleService-Info.plist
+!**/mock-google-services.json
