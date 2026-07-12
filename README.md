@@ -27,6 +27,6 @@ Emulator Suite** (`firebase.json`), never production Firebase.
 
 ## Status
 
-Bootstrapping. The Gradle/Compose Multiplatform project is scaffolded via the
-first tracked issue; CI workflows are already in place and activate once the
-project lands.
+The Gradle/Compose Multiplatform project is scaffolded (`composeApp` shared
+module, `androidApp`, `iosApp`) and CI is live against it. Feature work now
+proceeds issue by issue on top of this base.
