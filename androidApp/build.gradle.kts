@@ -50,6 +50,12 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
 
+    // Test-only: resolves ExerciseSeeder/ExerciseRepository from the app's real Koin
+    // container in ExerciseSeedingInstrumentedTest (composeApp only exposes these
+    // transitively as `implementation`, not `api`).
+    androidTestImplementation(libs.koin.core)
+    androidTestImplementation(libs.kotlinx.coroutines.core)
+
     // Test-only: proves the Firebase Local Emulator Suite wiring works end to
     // end (see FirestoreEmulatorSmokeTest). No production code depends on
     // Firebase yet — the backend choice (custom Ktor vs BaaS) is deferred to
