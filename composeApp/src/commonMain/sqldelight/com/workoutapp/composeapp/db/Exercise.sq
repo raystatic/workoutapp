@@ -1,0 +1,28 @@
+import kotlin.collections.List;
+
+CREATE TABLE exercise (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    primaryMuscle TEXT NOT NULL,
+    secondaryMuscles TEXT AS List<String> NOT NULL DEFAULT '',
+    equipment TEXT NOT NULL,
+    mediaUrl TEXT,
+    isCustom INTEGER AS Boolean NOT NULL DEFAULT 0,
+    instructions TEXT,
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING'
+);
+
+selectAll:
+SELECT * FROM exercise ORDER BY name ASC;
+
+selectById:
+SELECT * FROM exercise WHERE id = ?;
+
+insert:
+INSERT INTO exercise(name, primaryMuscle, secondaryMuscles, equipment, mediaUrl, isCustom, instructions, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM exercise WHERE id = ?;

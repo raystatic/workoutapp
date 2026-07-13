@@ -1,0 +1,33 @@
+import com.workoutapp.composeapp.data.db.SetType;
+
+CREATE TABLE workoutSet (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    workoutExerciseId INTEGER NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    reps INTEGER,
+    weight REAL,
+    durationSec INTEGER,
+    setType TEXT AS SetType NOT NULL DEFAULT 'NORMAL',
+    completed INTEGER AS Boolean NOT NULL DEFAULT 0,
+    rpe REAL,
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING',
+    FOREIGN KEY (workoutExerciseId) REFERENCES workoutExercise(id) ON DELETE CASCADE
+);
+
+selectByWorkoutExerciseId:
+SELECT * FROM workoutSet WHERE workoutExerciseId = ? ORDER BY position ASC;
+
+selectById:
+SELECT * FROM workoutSet WHERE id = ?;
+
+insert:
+INSERT INTO workoutSet(workoutExerciseId, position, reps, weight, durationSec, setType, completed, rpe, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+updateRpe:
+UPDATE workoutSet SET rpe = ? WHERE id = ?;
+
+deleteById:
+DELETE FROM workoutSet WHERE id = ?;

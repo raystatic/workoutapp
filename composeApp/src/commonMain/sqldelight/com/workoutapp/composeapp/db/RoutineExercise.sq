@@ -1,0 +1,27 @@
+CREATE TABLE routineExercise (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    routineId INTEGER NOT NULL,
+    exerciseId INTEGER NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    supersetGroup TEXT,
+    restSeconds INTEGER,
+    notes TEXT,
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING',
+    FOREIGN KEY (routineId) REFERENCES routine(id) ON DELETE CASCADE,
+    FOREIGN KEY (exerciseId) REFERENCES exercise(id)
+);
+
+selectByRoutineId:
+SELECT * FROM routineExercise WHERE routineId = ? ORDER BY position ASC;
+
+selectById:
+SELECT * FROM routineExercise WHERE id = ?;
+
+insert:
+INSERT INTO routineExercise(routineId, exerciseId, position, supersetGroup, restSeconds, notes, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM routineExercise WHERE id = ?;

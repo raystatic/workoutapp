@@ -1,0 +1,25 @@
+CREATE TABLE personalRecord (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    exerciseId INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    value REAL NOT NULL,
+    workoutId INTEGER NOT NULL,
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING',
+    FOREIGN KEY (exerciseId) REFERENCES exercise(id),
+    FOREIGN KEY (workoutId) REFERENCES workout(id)
+);
+
+selectByExerciseId:
+SELECT * FROM personalRecord WHERE exerciseId = ? ORDER BY updatedAt DESC;
+
+selectById:
+SELECT * FROM personalRecord WHERE id = ?;
+
+insert:
+INSERT INTO personalRecord(exerciseId, type, value, workoutId, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM personalRecord WHERE id = ?;

@@ -1,0 +1,24 @@
+CREATE TABLE userProfile (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    displayName TEXT NOT NULL,
+    avatar TEXT,
+    isPublic INTEGER AS Boolean NOT NULL DEFAULT 0,
+    streak INTEGER NOT NULL DEFAULT 0,
+    proUntil INTEGER,
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING'
+);
+
+selectAll:
+SELECT * FROM userProfile;
+
+selectById:
+SELECT * FROM userProfile WHERE id = ?;
+
+insert:
+INSERT INTO userProfile(displayName, avatar, isPublic, streak, proUntil, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM userProfile WHERE id = ?;
