@@ -42,6 +42,17 @@ class WorkoutRepositoryTest {
     }
 
     @Test
+    fun add_returnsTheGeneratedWorkoutId() = runTest {
+        val firstId = repository.add(name = "Earlier", startedAt = 1000L, updatedAt = 1000L)
+        val secondId = repository.add(name = "Later", startedAt = 2000L, updatedAt = 2000L)
+
+        val workouts = repository.observeAll().first()
+        assertEquals(firstId, workouts.single { it.name == "Earlier" }.id)
+        assertEquals(secondId, workouts.single { it.name == "Later" }.id)
+        assertTrue(secondId > firstId)
+    }
+
+    @Test
     fun add_multipleWorkouts_returnsNewestFirst() = runTest {
         repository.add(name = "Earlier", startedAt = 1000L, updatedAt = 1000L)
         repository.add(name = "Later", startedAt = 2000L, updatedAt = 2000L)

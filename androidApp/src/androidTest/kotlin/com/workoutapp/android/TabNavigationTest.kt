@@ -18,12 +18,12 @@ class TabNavigationTest {
 
     @Test
     fun switchingTabsShowsTheCorrespondingScreen() {
-        composeRule.onNodeWithText("Workout Log").assertExists()
+        composeRule.onNodeWithTag("start_empty_workout").assertExists()
 
         composeRule.onNodeWithTag("tab_profile").performClick()
         composeRule.onNodeWithText("Your Profile").assertExists()
 
         composeRule.onNodeWithTag("tab_workout").performClick()
-        composeRule.onNodeWithText("Workout Log").assertExists()
+        composeRule.onNodeWithTag("start_empty_workout").assertExists()
     }
 }

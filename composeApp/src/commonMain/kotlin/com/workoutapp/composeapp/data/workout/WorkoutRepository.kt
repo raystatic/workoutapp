@@ -13,6 +13,7 @@ import kotlinx.coroutines.withContext
 interface WorkoutRepository {
     fun observeAll(): Flow<List<Workout>>
 
+    /** Inserts the workout and returns its generated [Workout.id]. */
     suspend fun add(
         name: String,
         startedAt: Long,
@@ -21,7 +22,7 @@ interface WorkoutRepository {
         privacy: WorkoutPrivacy = WorkoutPrivacy.PRIVATE,
         media: List<String> = emptyList(),
         updatedAt: Long,
-    )
+    ): Long
 
     suspend fun delete(id: Long)
 }
@@ -43,18 +44,21 @@ class WorkoutRepositoryImpl(
         privacy: WorkoutPrivacy,
         media: List<String>,
         updatedAt: Long,
-    ) = withContext(ioDispatcher) {
-        queries.insert(
-            name = name,
-            startedAt = startedAt,
-            finishedAt = finishedAt,
-            note = note,
-            privacy = privacy,
-            media = media,
-            serverId = null,
-            updatedAt = updatedAt,
-            syncStatus = "PENDING",
-        )
+    ): Long = withContext(ioDispatcher) {
+        queries.transactionWithResult {
+            queries.insert(
+                name = name,
+                startedAt = startedAt,
+                finishedAt = finishedAt,
+                note = note,
+                privacy = privacy,
+                media = media,
+                serverId = null,
+                updatedAt = updatedAt,
+                syncStatus = "PENDING",
+            )
+            queries.lastInsertRowId().executeAsOne()
+        }
     }
 
     override suspend fun delete(id: Long) = withContext(ioDispatcher) {
