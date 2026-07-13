@@ -11,6 +11,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.savedstate.read
 import com.workoutapp.composeapp.navigation.AppDestination
 import com.workoutapp.composeapp.ui.activeworkout.ActiveWorkoutScreen
 import com.workoutapp.composeapp.ui.designsystem.catalog.ComponentCatalogScreen
@@ -82,7 +83,8 @@ fun App() {
                     route = AppDestination.ActiveWorkout.route,
                     arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
                 ) { backStackEntry ->
-                    ActiveWorkoutScreen(workoutId = backStackEntry.arguments?.getLong("workoutId") ?: 0L)
+                    val workoutId = backStackEntry.arguments?.read { getLong("workoutId") } ?: 0L
+                    ActiveWorkoutScreen(workoutId = workoutId)
                 }
             }
         }
