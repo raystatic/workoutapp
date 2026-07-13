@@ -60,7 +60,13 @@ Every code change ships with tests:
   (`connectedDebugAndroidTest`). Run on an Android emulator against the
   **Firebase Local Emulator Suite** (Auth, Firestore, Storage) so tests never
   touch production Firebase. Config lives in `firebase.json`; emulator host from
-  the Android emulator is `10.0.2.2`.
+  the Android emulator is `10.0.2.2`. `FirestoreEmulatorSmokeTest` proves this
+  wiring end to end (anonymous sign-in via the Auth emulator, then a Firestore
+  document round-trip) and needs **no GitHub secrets** — the app talks to the
+  emulator with a throwaway `FirebaseOptions` (fake project/app id, no real
+  Firebase project involved). The only CI secrets in this repo are
+  `FIREBASE_ANDROID_APP_ID` / `FIREBASE_SERVICE_ACCOUNT`, used solely by the
+  unrelated `distribute-android` job (see `docs/APP_DISTRIBUTION.md`).
 
 ## Status labels (the board)
 

@@ -49,4 +49,12 @@ dependencies {
     androidTestImplementation(libs.androidx.test.espresso.core)
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+
+    // Test-only: proves the Firebase Local Emulator Suite wiring works end to
+    // end (see FirestoreEmulatorSmokeTest). No production code depends on
+    // Firebase yet — the backend choice (custom Ktor vs BaaS) is deferred to
+    // Phase 2 (EXECUTION_PLAN.md §2).
+    androidTestImplementation(platform(libs.firebase.bom))
+    androidTestImplementation(libs.firebase.firestore)
+    androidTestImplementation(libs.firebase.auth)
 }

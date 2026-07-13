@@ -78,6 +78,28 @@ jobs:
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
 
+      # Caches the AVD image + snapshot so subsequent runs skip a cold boot.
+      - name: AVD cache
+        if: steps.gradle_check.outputs.exists == 'true'
+        uses: actions/cache@v4
+        id: avd-cache
+        with:
+          path: |
+            ~/.android/avd/*
+            ~/.android/adb*
+          key: avd-${{ matrix.api-level }}
+
+      - name: Create AVD snapshot for caching
+        if: steps.gradle_check.outputs.exists == 'true' && steps.avd-cache.outputs.cache-hit != 'true'
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: ${{ matrix.api-level }}
+          arch: x86_64
+          profile: pixel_6
+          force-avd-creation: false
+          disable-animations: true
+          script: echo "Generated AVD snapshot for caching."
+
       # Boots an Android emulator, starts the Firebase Local Emulator Suite
       # (Auth + Firestore + Storage), and runs the instrumentation tests against
       # both. firebase emulators:exec starts the emulators, runs the command,
@@ -90,6 +112,7 @@ jobs:
           api-level: ${{ matrix.api-level }}
           arch: x86_64
           profile: pixel_6
+          force-avd-creation: false
           disable-animations: true
           script: firebase emulators:exec --only auth,firestore,storage "./gradlew connectedDebugAndroidTest --stacktrace"
 
