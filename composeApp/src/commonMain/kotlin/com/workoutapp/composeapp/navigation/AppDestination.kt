@@ -5,6 +5,9 @@ sealed class AppDestination(val route: String, val label: String) {
     data object Workout : AppDestination("workout", "Workout")
     data object Profile : AppDestination("profile", "Profile")
 
+    /** Debug-only screen previewing every design-system component. */
+    data object ComponentCatalog : AppDestination("component_catalog", "Component Catalog")
+
     companion object {
         val bottomTabs: List<AppDestination> = listOf(Workout, Profile)
     }

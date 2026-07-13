@@ -1,20 +1,19 @@
 package com.workoutapp.composeapp
 
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.testTag
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.workoutapp.composeapp.navigation.AppDestination
+import com.workoutapp.composeapp.ui.designsystem.catalog.ComponentCatalogScreen
+import com.workoutapp.composeapp.ui.designsystem.components.AppBottomTabBar
+import com.workoutapp.composeapp.ui.designsystem.components.BottomTabItem
+import com.workoutapp.composeapp.ui.designsystem.theme.WorkoutAppTheme
 import com.workoutapp.composeapp.ui.profile.ProfileScreen
 import com.workoutapp.composeapp.ui.workout.WorkoutScreen
 
@@ -32,34 +31,28 @@ object AppInfo {
  */
 @Composable
 fun App() {
-    MaterialTheme {
+    WorkoutAppTheme {
         val navController = rememberNavController()
         val backStackEntry by navController.currentBackStackEntryAsState()
         val currentRoute = backStackEntry?.destination?.route
 
         Scaffold(
             bottomBar = {
-                NavigationBar {
-                    AppDestination.bottomTabs.forEach { destination ->
-                        NavigationBarItem(
-                            modifier = Modifier.testTag("tab_${destination.route}"),
-                            selected = currentRoute == destination.route,
-                            onClick = {
-                                if (currentRoute != destination.route) {
-                                    navController.navigate(destination.route) {
-                                        popUpTo(navController.graph.startDestinationId) {
-                                            saveState = true
-                                        }
-                                        launchSingleTop = true
-                                        restoreState = true
-                                    }
+                AppBottomTabBar(
+                    items = AppDestination.bottomTabs.map { BottomTabItem(it.route, it.label) },
+                    selectedRoute = currentRoute,
+                    onSelect = { route ->
+                        if (currentRoute != route) {
+                            navController.navigate(route) {
+                                popUpTo(navController.graph.startDestinationId) {
+                                    saveState = true
                                 }
-                            },
-                            icon = {},
-                            label = { Text(destination.label) },
-                        )
-                    }
-                }
+                                launchSingleTop = true
+                                restoreState = true
+                            }
+                        }
+                    },
+                )
             },
         ) { contentPadding ->
             NavHost(
@@ -68,7 +61,14 @@ fun App() {
                 modifier = Modifier.padding(contentPadding),
             ) {
                 composable(AppDestination.Workout.route) { WorkoutScreen() }
-                composable(AppDestination.Profile.route) { ProfileScreen() }
+                composable(AppDestination.Profile.route) {
+                    ProfileScreen(
+                        onOpenComponentCatalog = {
+                            navController.navigate(AppDestination.ComponentCatalog.route)
+                        },
+                    )
+                }
+                composable(AppDestination.ComponentCatalog.route) { ComponentCatalogScreen() }
             }
         }
     }
