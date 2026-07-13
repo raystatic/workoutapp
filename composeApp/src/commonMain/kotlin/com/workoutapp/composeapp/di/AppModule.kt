@@ -7,6 +7,7 @@ import com.workoutapp.composeapp.data.db.enumColumnAdapter
 import com.workoutapp.composeapp.data.db.stringListAdapter
 import com.workoutapp.composeapp.data.library.ExerciseRepository
 import com.workoutapp.composeapp.data.library.ExerciseRepositoryImpl
+import com.workoutapp.composeapp.data.library.ExerciseSeeder
 import com.workoutapp.composeapp.data.profile.UserProfileRepository
 import com.workoutapp.composeapp.data.profile.UserProfileRepositoryImpl
 import com.workoutapp.composeapp.data.progress.BodyMeasurementRepository
@@ -54,6 +55,7 @@ val appModule = module {
     }
     single<SampleNoteRepository> { SampleNoteRepositoryImpl(get()) }
     single<ExerciseRepository> { ExerciseRepositoryImpl(get()) }
+    single { ExerciseSeeder(get()) }
     single<RoutineRepository> { RoutineRepositoryImpl(get()) }
     single<RoutineExerciseRepository> { RoutineExerciseRepositoryImpl(get()) }
     single<RoutineSetRepository> { RoutineSetRepositoryImpl(get()) }

@@ -1,5 +1,10 @@
 package com.workoutapp.composeapp.di
 
+import com.workoutapp.composeapp.data.library.ExerciseSeeder
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.launch
 import org.koin.core.context.GlobalContext
 import org.koin.core.context.startKoin
 import org.koin.dsl.KoinAppDeclaration
@@ -11,8 +16,12 @@ import org.koin.dsl.KoinAppDeclaration
  */
 fun initKoin(config: KoinAppDeclaration = {}) {
     if (GlobalContext.getOrNull() != null) return
-    startKoin {
+    val koin = startKoin {
         config()
         modules(platformModule(), appModule)
+    }.koin
+
+    CoroutineScope(SupervisorJob() + Dispatchers.Default).launch {
+        koin.get<ExerciseSeeder>().seedIfNeeded()
     }
 }
