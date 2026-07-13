@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Test-only manifest, merged into the instrumentation APK only. INTERNET is
+    needed here so FirestoreEmulatorSmokeTest can reach the Firebase Local
+    Emulator Suite at 10.0.2.2; the production app has no network use yet and
+    stays offline-only (see AndroidManifest.xml).
+-->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+</manifest>
