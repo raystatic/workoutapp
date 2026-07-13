@@ -1,6 +1,7 @@
 package com.workoutapp.composeapp.data.sample
 
 import app.cash.sqldelight.driver.jdbc.sqlite.JdbcSqliteDriver
+import com.workoutapp.composeapp.data.db.testAppDatabase
 import com.workoutapp.composeapp.db.AppDatabase
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.test.runTest
@@ -22,7 +23,7 @@ class SampleNoteRepositoryTest {
     fun setUp() {
         driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
         AppDatabase.Schema.create(driver)
-        repository = SampleNoteRepositoryImpl(AppDatabase(driver))
+        repository = SampleNoteRepositoryImpl(testAppDatabase(driver))
     }
 
     @After

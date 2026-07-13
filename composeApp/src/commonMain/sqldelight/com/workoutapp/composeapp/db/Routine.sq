@@ -1,0 +1,23 @@
+CREATE TABLE routine (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    folderId INTEGER,
+    position INTEGER NOT NULL DEFAULT 0,
+    notes TEXT,
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING'
+);
+
+selectAll:
+SELECT * FROM routine ORDER BY position ASC;
+
+selectById:
+SELECT * FROM routine WHERE id = ?;
+
+insert:
+INSERT INTO routine(name, folderId, position, notes, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM routine WHERE id = ?;

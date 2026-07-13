@@ -1,0 +1,28 @@
+import com.workoutapp.composeapp.data.db.WorkoutPrivacy;
+import kotlin.collections.List;
+
+CREATE TABLE workout (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    startedAt INTEGER NOT NULL,
+    finishedAt INTEGER,
+    note TEXT,
+    privacy TEXT AS WorkoutPrivacy NOT NULL DEFAULT 'PRIVATE',
+    media TEXT AS List<String> NOT NULL DEFAULT '',
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING'
+);
+
+selectAll:
+SELECT * FROM workout ORDER BY startedAt DESC;
+
+selectById:
+SELECT * FROM workout WHERE id = ?;
+
+insert:
+INSERT INTO workout(name, startedAt, finishedAt, note, privacy, media, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM workout WHERE id = ?;

@@ -1,0 +1,27 @@
+import com.workoutapp.composeapp.data.db.SetType;
+
+CREATE TABLE routineSet (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    routineExerciseId INTEGER NOT NULL,
+    position INTEGER NOT NULL DEFAULT 0,
+    targetReps INTEGER,
+    targetWeight REAL,
+    setType TEXT AS SetType NOT NULL DEFAULT 'NORMAL',
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING',
+    FOREIGN KEY (routineExerciseId) REFERENCES routineExercise(id) ON DELETE CASCADE
+);
+
+selectByRoutineExerciseId:
+SELECT * FROM routineSet WHERE routineExerciseId = ? ORDER BY position ASC;
+
+selectById:
+SELECT * FROM routineSet WHERE id = ?;
+
+insert:
+INSERT INTO routineSet(routineExerciseId, position, targetReps, targetWeight, setType, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM routineSet WHERE id = ?;

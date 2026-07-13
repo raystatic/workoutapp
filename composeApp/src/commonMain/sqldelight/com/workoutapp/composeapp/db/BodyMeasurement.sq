@@ -1,0 +1,26 @@
+CREATE TABLE bodyMeasurement (
+    id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+    takenAt INTEGER NOT NULL,
+    type TEXT NOT NULL,
+    value REAL NOT NULL,
+    photoUrl TEXT,
+    serverId TEXT,
+    updatedAt INTEGER NOT NULL,
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING'
+);
+
+selectAll:
+SELECT * FROM bodyMeasurement ORDER BY takenAt DESC;
+
+selectByType:
+SELECT * FROM bodyMeasurement WHERE type = ? ORDER BY takenAt DESC;
+
+selectById:
+SELECT * FROM bodyMeasurement WHERE id = ?;
+
+insert:
+INSERT INTO bodyMeasurement(takenAt, type, value, photoUrl, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?);
+
+deleteById:
+DELETE FROM bodyMeasurement WHERE id = ?;
