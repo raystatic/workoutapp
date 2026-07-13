@@ -24,5 +24,8 @@ insert:
 INSERT INTO workout(name, startedAt, finishedAt, note, privacy, media, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+lastInsertRowId:
+SELECT last_insert_rowid();
+
 deleteById:
 DELETE FROM workout WHERE id = ?;
