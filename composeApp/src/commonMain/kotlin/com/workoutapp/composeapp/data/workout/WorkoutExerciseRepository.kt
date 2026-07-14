@@ -23,6 +23,8 @@ interface WorkoutExerciseRepository {
 
     suspend fun updatePosition(id: Long, position: Long)
 
+    suspend fun updateSupersetGroup(id: Long, supersetGroup: String?)
+
     suspend fun delete(id: Long)
 
     /**
@@ -64,6 +66,10 @@ class WorkoutExerciseRepositoryImpl(
 
     override suspend fun updatePosition(id: Long, position: Long) = withContext(ioDispatcher) {
         queries.updatePosition(position, id)
+    }
+
+    override suspend fun updateSupersetGroup(id: Long, supersetGroup: String?) = withContext(ioDispatcher) {
+        queries.updateSupersetGroup(supersetGroup, id)
     }
 
     override suspend fun delete(id: Long) = withContext(ioDispatcher) {

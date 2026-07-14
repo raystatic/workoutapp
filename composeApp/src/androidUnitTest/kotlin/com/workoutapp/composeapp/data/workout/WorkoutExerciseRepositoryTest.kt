@@ -81,6 +81,18 @@ class WorkoutExerciseRepositoryTest {
     }
 
     @Test
+    fun updateSupersetGroup_persistsTheGroupAndClearingItSetsNull() = runTest {
+        repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByWorkoutId(workoutId).first().single().id
+
+        repository.updateSupersetGroup(id, "sg-$id")
+        assertEquals("sg-$id", repository.observeByWorkoutId(workoutId).first().single().supersetGroup)
+
+        repository.updateSupersetGroup(id, null)
+        assertNull(repository.observeByWorkoutId(workoutId).first().single().supersetGroup)
+    }
+
+    @Test
     fun delete_removesOnlyTheMatchingEntry() = runTest {
         repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
         val idToDelete = repository.observeByWorkoutId(workoutId).first().single().id

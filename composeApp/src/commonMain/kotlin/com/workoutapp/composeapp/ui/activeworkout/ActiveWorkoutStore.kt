@@ -36,6 +36,11 @@ data class ActiveWorkoutExerciseUi(
     val exerciseName: String,
     val position: Long,
     val sets: List<ActiveWorkoutSetUi>,
+    val supersetGroup: String? = null,
+    /** Display label ("A", "B", ...) shared by every exercise in the same superset. */
+    val supersetLabel: String? = null,
+    /** True when this is the group member with the fewest completed sets — i.e. whose turn is next. */
+    val isUpNextInSuperset: Boolean = false,
 )
 
 data class ActiveWorkoutState(
@@ -60,6 +65,8 @@ sealed interface ActiveWorkoutIntent : MviIntent {
     data class RemoveExercise(val workoutExerciseId: Long) : ActiveWorkoutIntent
     data class MoveExerciseUp(val workoutExerciseId: Long) : ActiveWorkoutIntent
     data class MoveExerciseDown(val workoutExerciseId: Long) : ActiveWorkoutIntent
+    data class GroupWithNextExercise(val workoutExerciseId: Long) : ActiveWorkoutIntent
+    data class RemoveFromSuperset(val workoutExerciseId: Long) : ActiveWorkoutIntent
 }
 
 /** No effects currently fire; the type exists so [StoreViewModel] can be parameterized. */
@@ -101,20 +108,21 @@ class ActiveWorkoutStore(
         ) { workout, workoutExercises, sets, exercises ->
             val exerciseNames = exercises.associateBy { it.id }
             val setsByExercise = sets.groupBy { it.workoutExerciseId }
+            val baseExercises = workoutExercises
+                .sortedBy { it.position }
+                .map { workoutExercise ->
+                    val previousSets = previousSetsCache.getOrPut(workoutExercise.exerciseId) {
+                        previousSetResolver.resolve(workoutExercise.exerciseId, workoutId)
+                    }
+                    workoutExercise.toUi(
+                        exerciseName = exerciseNames[workoutExercise.exerciseId]?.name ?: "Unknown exercise",
+                        sets = setsByExercise[workoutExercise.id].orEmpty().sortedBy { it.position },
+                        previousSets = previousSets,
+                    )
+                }
             DerivedWorkoutData(
                 startedAt = workout?.startedAt,
-                exercises = workoutExercises
-                    .sortedBy { it.position }
-                    .map { workoutExercise ->
-                        val previousSets = previousSetsCache.getOrPut(workoutExercise.exerciseId) {
-                            previousSetResolver.resolve(workoutExercise.exerciseId, workoutId)
-                        }
-                        workoutExercise.toUi(
-                            exerciseName = exerciseNames[workoutExercise.exerciseId]?.name ?: "Unknown exercise",
-                            sets = setsByExercise[workoutExercise.id].orEmpty().sortedBy { it.position },
-                            previousSets = previousSets,
-                        )
-                    },
+                exercises = baseExercises.withSupersetInfo(),
                 availableExercises = exercises,
             )
         }.onEach { derived ->
@@ -145,6 +153,8 @@ class ActiveWorkoutStore(
                 scope.launch { workoutExerciseRepository.delete(intent.workoutExerciseId) }
             is ActiveWorkoutIntent.MoveExerciseUp -> moveExercise(intent.workoutExerciseId, offset = -1)
             is ActiveWorkoutIntent.MoveExerciseDown -> moveExercise(intent.workoutExerciseId, offset = 1)
+            is ActiveWorkoutIntent.GroupWithNextExercise -> groupWithNextExercise(intent.workoutExerciseId)
+            is ActiveWorkoutIntent.RemoveFromSuperset -> removeFromSuperset(intent.workoutExerciseId)
         }
     }
 
@@ -210,6 +220,71 @@ class ActiveWorkoutStore(
             workoutExerciseRepository.updatePosition(b.workoutExerciseId, a.position)
         }
     }
+
+    /**
+     * Pairs [workoutExerciseId] with the exercise immediately after it into a superset. Either
+     * exercise may already belong to a (different) superset, in which case the pair joins that
+     * existing group — this is how a group grows past two exercises ("giant sets").
+     */
+    private fun groupWithNextExercise(workoutExerciseId: Long) {
+        val exercises = state.value.exercises
+        val index = exercises.indexOfFirst { it.workoutExerciseId == workoutExerciseId }
+        if (index == -1 || index == exercises.lastIndex) return
+        val current = exercises[index]
+        val next = exercises[index + 1]
+        val targetGroup = current.supersetGroup ?: next.supersetGroup ?: "sg-${current.workoutExerciseId}"
+        scope.launch {
+            if (current.supersetGroup != targetGroup) {
+                workoutExerciseRepository.updateSupersetGroup(current.workoutExerciseId, targetGroup)
+            }
+            if (next.supersetGroup != targetGroup) {
+                workoutExerciseRepository.updateSupersetGroup(next.workoutExerciseId, targetGroup)
+            }
+        }
+    }
+
+    /** Ungroups [workoutExerciseId]. If that leaves a single member behind, ungroups it too. */
+    private fun removeFromSuperset(workoutExerciseId: Long) {
+        val exercises = state.value.exercises
+        val current = exercises.firstOrNull { it.workoutExerciseId == workoutExerciseId } ?: return
+        val group = current.supersetGroup ?: return
+        scope.launch {
+            workoutExerciseRepository.updateSupersetGroup(workoutExerciseId, null)
+            val remaining = exercises.filter { it.supersetGroup == group && it.workoutExerciseId != workoutExerciseId }
+            if (remaining.size == 1) {
+                workoutExerciseRepository.updateSupersetGroup(remaining.single().workoutExerciseId, null)
+            }
+        }
+    }
+}
+
+/**
+ * Annotates each exercise with its superset display label ("A", "B", ... assigned in order of
+ * first appearance) and whether it's the group member currently "up next" to log — the member
+ * with the fewest completed sets, ties broken by position. As sets complete, the fewest-completed
+ * member changes, so this naturally alternates focus between the grouped exercises.
+ */
+private fun List<ActiveWorkoutExerciseUi>.withSupersetInfo(): List<ActiveWorkoutExerciseUi> {
+    val members = filter { it.supersetGroup != null }.groupBy { it.supersetGroup }
+    val upNextIds = members.values.mapNotNull { group ->
+        if (group.size < 2) return@mapNotNull null
+        fun ActiveWorkoutExerciseUi.completedCount() = sets.count { it.set.completed }
+        fun ActiveWorkoutExerciseUi.hasIncompleteSet() = sets.any { !it.set.completed }
+        val minCompleted = group.minOf { it.completedCount() }
+        group
+            .filter { it.completedCount() == minCompleted && it.hasIncompleteSet() }
+            .minByOrNull { it.position }
+            ?.workoutExerciseId
+    }.toSet()
+
+    val labels = mutableMapOf<String, String>()
+    var nextLabelIndex = 0
+    return map { exerciseUi ->
+        val label = exerciseUi.supersetGroup?.let { group ->
+            labels.getOrPut(group) { ('A' + nextLabelIndex++).toString() }
+        }
+        exerciseUi.copy(supersetLabel = label, isUpNextInSuperset = exerciseUi.workoutExerciseId in upNextIds)
+    }
 }
 
 private fun WorkoutExercise.toUi(
@@ -221,6 +296,7 @@ private fun WorkoutExercise.toUi(
     exerciseId = exerciseId,
     exerciseName = exerciseName,
     position = position,
+    supersetGroup = supersetGroup,
     sets = sets.mapIndexed { index, set ->
         val previous = previousSets.getOrNull(index)
         ActiveWorkoutSetUi(

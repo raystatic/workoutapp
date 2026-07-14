@@ -1,6 +1,8 @@
 package com.workoutapp.composeapp.ui.activeworkout
 
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -13,6 +15,9 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.AssistChip
+import androidx.compose.material3.AssistChipDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.IconButton
@@ -36,6 +41,8 @@ import androidx.compose.ui.window.Dialog
 import com.workoutapp.composeapp.data.db.currentTimeMillis
 import com.workoutapp.composeapp.db.Exercise
 import com.workoutapp.composeapp.ui.designsystem.components.AppCard
+import com.workoutapp.composeapp.ui.designsystem.components.AppDropdownMenu
+import com.workoutapp.composeapp.ui.designsystem.components.AppDropdownMenuItem
 import com.workoutapp.composeapp.ui.designsystem.components.AppListRow
 import com.workoutapp.composeapp.ui.designsystem.components.AppNumberField
 import com.workoutapp.composeapp.ui.designsystem.components.AppTopBar
@@ -53,9 +60,10 @@ import com.workoutapp.composeapp.ui.designsystem.components.SetType as UiSetType
 /**
  * The set-logging screen for an in-progress workout: a running duration
  * timer, one card per exercise with its set rows (weight/reps/duration,
- * set type, complete toggle, swipe-to-delete), reordering, and a picker to
- * add more exercises. Every edit writes straight to SQLDelight, so the
- * screen is fully usable offline and survives process death / backgrounding.
+ * set type, complete toggle, swipe-to-delete), reordering, superset
+ * grouping via a "•••" menu, and a picker to add more exercises. Every edit
+ * writes straight to SQLDelight, so the screen is fully usable offline and
+ * survives process death / backgrounding.
  */
 @Composable
 fun ActiveWorkoutScreen(
@@ -99,6 +107,7 @@ fun ActiveWorkoutScreen(
                         exercise = exerciseUi,
                         isFirst = index == 0,
                         isLast = index == state.exercises.lastIndex,
+                        canGroupWithNext = index != state.exercises.lastIndex,
                         onIntent = store::onIntent,
                     )
                 }
@@ -129,21 +138,59 @@ private fun ExerciseCard(
     exercise: ActiveWorkoutExerciseUi,
     isFirst: Boolean,
     isLast: Boolean,
+    canGroupWithNext: Boolean,
     onIntent: (ActiveWorkoutIntent) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val spacing = LocalSpacing.current
-    AppCard(modifier = modifier.fillMaxWidth().testTag("exercise_row_${exercise.workoutExerciseId}")) {
+    var menuExpanded by remember { mutableStateOf(false) }
+    val isGrouped = exercise.supersetGroup != null
+    val cardModifier = modifier.fillMaxWidth().testTag("exercise_row_${exercise.workoutExerciseId}").let {
+        if (isGrouped) {
+            it.border(
+                BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(12.dp),
+            )
+        } else {
+            it
+        }
+    }
+    AppCard(modifier = cardModifier) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = exercise.exerciseName,
-                style = MaterialTheme.typography.titleMedium,
-                modifier = Modifier.testTag("exercise_name_${exercise.workoutExerciseId}"),
-            )
+            Column {
+                if (exercise.supersetLabel != null) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        AssistChip(
+                            onClick = {},
+                            label = { Text("Superset ${exercise.supersetLabel}") },
+                            colors = AssistChipDefaults.assistChipColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                            ),
+                            modifier = Modifier.testTag("superset_badge_${exercise.workoutExerciseId}"),
+                        )
+                        if (exercise.isUpNextInSuperset) {
+                            Text(
+                                text = "Up next",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.testTag("superset_up_next_${exercise.workoutExerciseId}"),
+                            )
+                        }
+                    }
+                }
+                Text(
+                    text = exercise.exerciseName,
+                    style = MaterialTheme.typography.titleMedium,
+                    modifier = Modifier.testTag("exercise_name_${exercise.workoutExerciseId}"),
+                )
+            }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 IconButton(
                     onClick = { onIntent(ActiveWorkoutIntent.MoveExerciseUp(exercise.workoutExerciseId)) },
@@ -159,6 +206,33 @@ private fun ExerciseCard(
                     onClick = { onIntent(ActiveWorkoutIntent.RemoveExercise(exercise.workoutExerciseId)) },
                     modifier = Modifier.testTag("remove_exercise_${exercise.workoutExerciseId}"),
                 ) { Text("✕") }
+                Box {
+                    IconButton(
+                        onClick = { menuExpanded = true },
+                        modifier = Modifier.testTag("exercise_menu_${exercise.workoutExerciseId}"),
+                    ) { Text("•••") }
+                    AppDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                        if (isGrouped) {
+                            AppDropdownMenuItem(
+                                text = "Remove from superset",
+                                onClick = {
+                                    menuExpanded = false
+                                    onIntent(ActiveWorkoutIntent.RemoveFromSuperset(exercise.workoutExerciseId))
+                                },
+                                modifier = Modifier.testTag("remove_from_superset_${exercise.workoutExerciseId}"),
+                            )
+                        } else if (canGroupWithNext) {
+                            AppDropdownMenuItem(
+                                text = "Group with next exercise",
+                                onClick = {
+                                    menuExpanded = false
+                                    onIntent(ActiveWorkoutIntent.GroupWithNextExercise(exercise.workoutExerciseId))
+                                },
+                                modifier = Modifier.testTag("group_with_next_${exercise.workoutExerciseId}"),
+                            )
+                        }
+                    }
+                }
             }
         }
 
