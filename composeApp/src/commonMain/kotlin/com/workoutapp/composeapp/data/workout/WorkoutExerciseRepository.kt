@@ -21,6 +21,8 @@ interface WorkoutExerciseRepository {
         updatedAt: Long,
     )
 
+    suspend fun updatePosition(id: Long, position: Long)
+
     suspend fun delete(id: Long)
 }
 
@@ -51,6 +53,10 @@ class WorkoutExerciseRepositoryImpl(
             updatedAt = updatedAt,
             syncStatus = "PENDING",
         )
+    }
+
+    override suspend fun updatePosition(id: Long, position: Long) = withContext(ioDispatcher) {
+        queries.updatePosition(position, id)
     }
 
     override suspend fun delete(id: Long) = withContext(ioDispatcher) {

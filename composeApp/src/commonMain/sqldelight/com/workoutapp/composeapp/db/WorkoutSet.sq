@@ -19,6 +19,12 @@ CREATE TABLE workoutSet (
 selectByWorkoutExerciseId:
 SELECT * FROM workoutSet WHERE workoutExerciseId = ? ORDER BY position ASC;
 
+selectByWorkoutId:
+SELECT workoutSet.* FROM workoutSet
+JOIN workoutExercise ON workoutSet.workoutExerciseId = workoutExercise.id
+WHERE workoutExercise.workoutId = ?
+ORDER BY workoutSet.position ASC;
+
 selectById:
 SELECT * FROM workoutSet WHERE id = ?;
 
@@ -26,8 +32,14 @@ insert:
 INSERT INTO workoutSet(workoutExerciseId, position, reps, weight, durationSec, setType, completed, rpe, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+update:
+UPDATE workoutSet SET reps = ?, weight = ?, durationSec = ?, setType = ?, completed = ?, updatedAt = ? WHERE id = ?;
+
 updateRpe:
 UPDATE workoutSet SET rpe = ? WHERE id = ?;
+
+updatePosition:
+UPDATE workoutSet SET position = ? WHERE id = ?;
 
 deleteById:
 DELETE FROM workoutSet WHERE id = ?;

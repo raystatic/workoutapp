@@ -22,5 +22,8 @@ insert:
 INSERT INTO workoutExercise(workoutId, exerciseId, position, supersetGroup, notes, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
+updatePosition:
+UPDATE workoutExercise SET position = ? WHERE id = ?;
+
 deleteById:
 DELETE FROM workoutExercise WHERE id = ?;

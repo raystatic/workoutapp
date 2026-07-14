@@ -35,6 +35,8 @@ private class FakeWorkoutRepository : WorkoutRepository {
 
     override fun observeAll(): Flow<List<Workout>> = MutableStateFlow(emptyList())
 
+    override fun observeById(id: Long): Flow<Workout?> = MutableStateFlow(null)
+
     override suspend fun add(
         name: String,
         startedAt: Long,

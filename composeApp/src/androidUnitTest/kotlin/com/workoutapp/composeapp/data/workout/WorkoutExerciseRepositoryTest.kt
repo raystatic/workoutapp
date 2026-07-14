@@ -70,6 +70,16 @@ class WorkoutExerciseRepositoryTest {
     }
 
     @Test
+    fun updatePosition_persistsTheNewPosition() = runTest {
+        repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByWorkoutId(workoutId).first().single().id
+
+        repository.updatePosition(id, 3)
+
+        assertEquals(3L, repository.observeByWorkoutId(workoutId).first().single().position)
+    }
+
+    @Test
     fun delete_removesOnlyTheMatchingEntry() = runTest {
         repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
         val idToDelete = repository.observeByWorkoutId(workoutId).first().single().id

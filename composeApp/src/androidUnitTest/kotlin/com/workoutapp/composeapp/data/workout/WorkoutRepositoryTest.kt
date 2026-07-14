@@ -63,6 +63,23 @@ class WorkoutRepositoryTest {
     }
 
     @Test
+    fun observeById_emitsTheMatchingWorkout() = runTest {
+        val id = repository.add(name = "Morning Session", startedAt = 1000L, updatedAt = 1000L)
+
+        val workout = repository.observeById(id).first()
+
+        assertEquals(id, workout?.id)
+        assertEquals("Morning Session", workout?.name)
+    }
+
+    @Test
+    fun observeById_unknownId_emitsNull() = runTest {
+        val workout = repository.observeById(999L).first()
+
+        assertEquals(null, workout)
+    }
+
+    @Test
     fun delete_removesOnlyTheMatchingWorkout() = runTest {
         repository.add(name = "Earlier", startedAt = 1000L, updatedAt = 1000L)
         val idToDelete = repository.observeAll().first().single().id
