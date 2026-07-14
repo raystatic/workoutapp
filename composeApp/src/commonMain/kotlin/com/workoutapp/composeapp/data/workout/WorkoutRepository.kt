@@ -2,6 +2,7 @@ package com.workoutapp.composeapp.data.workout
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.workoutapp.composeapp.data.db.WorkoutPrivacy
 import com.workoutapp.composeapp.db.AppDatabase
 import com.workoutapp.composeapp.db.Workout
@@ -12,6 +13,8 @@ import kotlinx.coroutines.withContext
 
 interface WorkoutRepository {
     fun observeAll(): Flow<List<Workout>>
+
+    fun observeById(id: Long): Flow<Workout?>
 
     /** Inserts the workout and returns its generated [Workout.id]. */
     suspend fun add(
@@ -35,6 +38,9 @@ class WorkoutRepositoryImpl(
 
     override fun observeAll(): Flow<List<Workout>> =
         queries.selectAll().asFlow().mapToList(ioDispatcher)
+
+    override fun observeById(id: Long): Flow<Workout?> =
+        queries.selectById(id).asFlow().mapToOneOrNull(ioDispatcher)
 
     override suspend fun add(
         name: String,

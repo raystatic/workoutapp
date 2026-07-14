@@ -84,7 +84,7 @@ fun App() {
                     arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
                 ) { backStackEntry ->
                     val workoutId = backStackEntry.arguments?.read { getLong("workoutId") } ?: 0L
-                    ActiveWorkoutScreen(workoutId = workoutId)
+                    ActiveWorkoutScreen(workoutId = workoutId, onBack = { navController.popBackStack() })
                 }
             }
         }

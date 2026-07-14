@@ -31,6 +31,7 @@ import com.workoutapp.composeapp.db.Exercise
 import com.workoutapp.composeapp.db.RoutineSet
 import com.workoutapp.composeapp.db.Workout
 import com.workoutapp.composeapp.db.WorkoutSet
+import com.workoutapp.composeapp.ui.activeworkout.ActiveWorkoutStore
 import com.workoutapp.composeapp.ui.workout.WorkoutStore
 import org.koin.core.module.Module
 import org.koin.dsl.module
@@ -63,4 +64,5 @@ val appModule = module {
     single<PersonalRecordRepository> { PersonalRecordRepositoryImpl(get()) }
     single<UserProfileRepository> { UserProfileRepositoryImpl(get()) }
     single { WorkoutStore(get(), get()) }
+    factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get()) }
 }

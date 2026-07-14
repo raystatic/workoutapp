@@ -13,6 +13,8 @@ import kotlinx.coroutines.withContext
 interface WorkoutSetRepository {
     fun observeByWorkoutExerciseId(workoutExerciseId: Long): Flow<List<WorkoutSet>>
 
+    fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutSet>>
+
     suspend fun add(
         workoutExerciseId: Long,
         position: Long = 0,
@@ -25,7 +27,19 @@ interface WorkoutSetRepository {
         updatedAt: Long,
     )
 
+    suspend fun update(
+        id: Long,
+        reps: Long?,
+        weight: Double?,
+        durationSec: Long?,
+        setType: SetType,
+        completed: Boolean,
+        updatedAt: Long,
+    )
+
     suspend fun updateRpe(id: Long, rpe: Double?)
+
+    suspend fun updatePosition(id: Long, position: Long)
 
     suspend fun delete(id: Long)
 }
@@ -38,6 +52,9 @@ class WorkoutSetRepositoryImpl(
 
     override fun observeByWorkoutExerciseId(workoutExerciseId: Long): Flow<List<WorkoutSet>> =
         queries.selectByWorkoutExerciseId(workoutExerciseId).asFlow().mapToList(ioDispatcher)
+
+    override fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutSet>> =
+        queries.selectByWorkoutId(workoutId).asFlow().mapToList(ioDispatcher)
 
     override suspend fun add(
         workoutExerciseId: Long,
@@ -65,8 +82,32 @@ class WorkoutSetRepositoryImpl(
         )
     }
 
+    override suspend fun update(
+        id: Long,
+        reps: Long?,
+        weight: Double?,
+        durationSec: Long?,
+        setType: SetType,
+        completed: Boolean,
+        updatedAt: Long,
+    ) = withContext(ioDispatcher) {
+        queries.update(
+            reps = reps,
+            weight = weight,
+            durationSec = durationSec,
+            setType = setType,
+            completed = completed,
+            updatedAt = updatedAt,
+            id = id,
+        )
+    }
+
     override suspend fun updateRpe(id: Long, rpe: Double?) = withContext(ioDispatcher) {
         queries.updateRpe(rpe, id)
+    }
+
+    override suspend fun updatePosition(id: Long, position: Long) = withContext(ioDispatcher) {
+        queries.updatePosition(position, id)
     }
 
     override suspend fun delete(id: Long) = withContext(ioDispatcher) {

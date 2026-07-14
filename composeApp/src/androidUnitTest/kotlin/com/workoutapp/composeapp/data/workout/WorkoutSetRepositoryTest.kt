@@ -17,6 +17,7 @@ class WorkoutSetRepositoryTest {
     private lateinit var driver: JdbcSqliteDriver
     private lateinit var database: AppDatabase
     private lateinit var repository: WorkoutSetRepository
+    private var workoutId: Long = 0
     private var workoutExerciseId: Long = 0
 
     @Before
@@ -37,7 +38,7 @@ class WorkoutSetRepositoryTest {
             updatedAt = 1000L,
             syncStatus = "PENDING",
         )
-        val workoutId = database.workoutQueries.selectAll().executeAsList().single().id
+        workoutId = database.workoutQueries.selectAll().executeAsList().single().id
 
         database.exerciseQueries.insert(
             name = "Bench Press",
@@ -95,6 +96,78 @@ class WorkoutSetRepositoryTest {
 
         val set = repository.observeByWorkoutExerciseId(workoutExerciseId).first().single()
         assertEquals(8.5, set.rpe)
+    }
+
+    @Test
+    fun update_persistsAllEditableFields() = runTest {
+        repository.add(workoutExerciseId = workoutExerciseId, position = 0, reps = 10, weight = 80.0, updatedAt = 1000L)
+        val id = repository.observeByWorkoutExerciseId(workoutExerciseId).first().single().id
+
+        repository.update(
+            id = id,
+            reps = 12,
+            weight = 82.5,
+            durationSec = 45,
+            setType = SetType.DROP,
+            completed = true,
+            updatedAt = 2000L,
+        )
+
+        val set = repository.observeByWorkoutExerciseId(workoutExerciseId).first().single()
+        assertEquals(12L, set.reps)
+        assertEquals(82.5, set.weight)
+        assertEquals(45L, set.durationSec)
+        assertEquals(SetType.DROP, set.setType)
+        assertEquals(true, set.completed)
+    }
+
+    @Test
+    fun updatePosition_persistsTheNewPosition() = runTest {
+        repository.add(workoutExerciseId = workoutExerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByWorkoutExerciseId(workoutExerciseId).first().single().id
+
+        repository.updatePosition(id, 5)
+
+        assertEquals(5L, repository.observeByWorkoutExerciseId(workoutExerciseId).first().single().position)
+    }
+
+    @Test
+    fun observeByWorkoutId_returnsSetsAcrossAllExercisesInTheWorkout() = runTest {
+        database.exerciseQueries.insert(
+            name = "Squat",
+            primaryMuscle = "Legs",
+            secondaryMuscles = emptyList(),
+            equipment = "Barbell",
+            mediaUrl = null,
+            isCustom = false,
+            instructions = null,
+            serverId = null,
+            updatedAt = 1000L,
+            syncStatus = "PENDING",
+        )
+        val secondExerciseId = database.exerciseQueries.selectAll().executeAsList().single { it.name == "Squat" }.id
+        database.workoutExerciseQueries.insert(
+            workoutId = workoutId,
+            exerciseId = secondExerciseId,
+            position = 1,
+            supersetGroup = null,
+            notes = null,
+            serverId = null,
+            updatedAt = 1000L,
+            syncStatus = "PENDING",
+        )
+        val secondWorkoutExerciseId = database.workoutExerciseQueries.selectByWorkoutId(workoutId)
+            .executeAsList()
+            .single { it.exerciseId == secondExerciseId }
+            .id
+
+        repository.add(workoutExerciseId = workoutExerciseId, position = 0, reps = 10, updatedAt = 1000L)
+        repository.add(workoutExerciseId = secondWorkoutExerciseId, position = 0, reps = 5, updatedAt = 1000L)
+
+        val sets = repository.observeByWorkoutId(workoutId).first()
+
+        assertEquals(2, sets.size)
+        assertEquals(setOf(10L, 5L), sets.map { it.reps }.toSet())
     }
 
     @Test
