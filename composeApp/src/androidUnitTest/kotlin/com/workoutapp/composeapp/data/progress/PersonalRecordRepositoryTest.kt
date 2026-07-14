@@ -79,4 +79,19 @@ class PersonalRecordRepositoryTest {
         val remaining = repository.observeByExerciseId(exerciseId).first()
         assertEquals(emptyList(), remaining)
     }
+
+    @Test
+    fun getBestValue_noRecordsYet_returnsNull() = runTest {
+        assertEquals(null, repository.getBestValue(exerciseId, "1RM"))
+    }
+
+    @Test
+    fun getBestValue_returnsTheHighestValueForThatExerciseAndType() = runTest {
+        repository.add(exerciseId = exerciseId, type = "1RM", value = 100.0, workoutId = workoutId, updatedAt = 1000L)
+        repository.add(exerciseId = exerciseId, type = "1RM", value = 130.0, workoutId = workoutId, updatedAt = 2000L)
+        repository.add(exerciseId = exerciseId, type = "maxWeight", value = 200.0, workoutId = workoutId, updatedAt = 2000L)
+
+        assertEquals(130.0, repository.getBestValue(exerciseId, "1RM"))
+        assertEquals(200.0, repository.getBestValue(exerciseId, "maxWeight"))
+    }
 }

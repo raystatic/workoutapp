@@ -72,6 +72,7 @@ import com.workoutapp.composeapp.ui.designsystem.components.SetType as UiSetType
 fun ActiveWorkoutScreen(
     workoutId: Long,
     onBack: () -> Unit = {},
+    onFinish: (Long) -> Unit = {},
     store: ActiveWorkoutStore = koinInject { parametersOf(workoutId) },
     restTimerStore: RestTimerStore = koinInject(),
 ) {
@@ -87,6 +88,13 @@ fun ActiveWorkoutScreen(
                 IconButton(onClick = onBack, modifier = Modifier.testTag("active_workout_back_button")) {
                     Text("←")
                 }
+            },
+            actions = {
+                SecondaryButton(
+                    text = "Finish",
+                    onClick = { onFinish(workoutId) },
+                    modifier = Modifier.testTag("finish_workout_button"),
+                )
             },
         )
         Text(

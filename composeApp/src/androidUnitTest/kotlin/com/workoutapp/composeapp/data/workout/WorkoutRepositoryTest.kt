@@ -90,4 +90,59 @@ class WorkoutRepositoryTest {
         val remaining = repository.observeAll().first()
         assertEquals(listOf("Later"), remaining.map { it.name })
     }
+
+    @Test
+    fun getById_returnsTheMatchingWorkout() = runTest {
+        val id = repository.add(name = "Morning Session", startedAt = 1000L, updatedAt = 1000L)
+
+        val workout = repository.getById(id)
+
+        assertEquals("Morning Session", workout?.name)
+    }
+
+    @Test
+    fun getById_unknownId_returnsNull() = runTest {
+        assertEquals(null, repository.getById(999L))
+    }
+
+    @Test
+    fun update_appliesFinishSaveEditsToTheWorkout() = runTest {
+        val id = repository.add(name = "Morning Session", startedAt = 1000L, updatedAt = 1000L)
+
+        repository.update(
+            id = id,
+            name = "Renamed Session",
+            finishedAt = 5000L,
+            note = "Felt great",
+            privacy = WorkoutPrivacy.PUBLIC,
+            media = listOf("photo.jpg"),
+            updatedAt = 5000L,
+        )
+
+        val workout = repository.observeById(id).first()
+        assertEquals("Renamed Session", workout?.name)
+        assertEquals(5000L, workout?.finishedAt)
+        assertEquals("Felt great", workout?.note)
+        assertEquals(WorkoutPrivacy.PUBLIC, workout?.privacy)
+        assertEquals(listOf("photo.jpg"), workout?.media)
+    }
+
+    @Test
+    fun getCompletedWorkoutFinishedAtTimestamps_excludesUnfinishedWorkouts() = runTest {
+        val finishedId = repository.add(name = "Finished", startedAt = 1000L, updatedAt = 1000L)
+        repository.add(name = "In Progress", startedAt = 2000L, updatedAt = 2000L)
+        repository.update(
+            id = finishedId,
+            name = "Finished",
+            finishedAt = 4000L,
+            note = null,
+            privacy = WorkoutPrivacy.PRIVATE,
+            media = emptyList(),
+            updatedAt = 4000L,
+        )
+
+        val timestamps = repository.getCompletedWorkoutFinishedAtTimestamps()
+
+        assertEquals(listOf(4000L), timestamps)
+    }
 }

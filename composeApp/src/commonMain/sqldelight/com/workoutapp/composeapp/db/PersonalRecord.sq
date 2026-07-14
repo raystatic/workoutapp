@@ -17,6 +17,9 @@ SELECT * FROM personalRecord WHERE exerciseId = ? ORDER BY updatedAt DESC;
 selectById:
 SELECT * FROM personalRecord WHERE id = ?;
 
+selectBestValueByExerciseIdAndType:
+SELECT MAX(value) FROM personalRecord WHERE exerciseId = ? AND type = ?;
+
 insert:
 INSERT INTO personalRecord(exerciseId, type, value, workoutId, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?);

@@ -12,6 +12,14 @@ import kotlinx.coroutines.withContext
 interface UserProfileRepository {
     fun observeAll(): Flow<List<UserProfile>>
 
+    /**
+     * The single local (unauthenticated) profile, creating a default one if none exists yet.
+     * Phase 1 has no accounts, so exactly one [UserProfile] row backs the whole app.
+     */
+    suspend fun getOrCreateLocalProfile(updatedAt: Long): UserProfile
+
+    suspend fun updateStreak(id: Long, streak: Long, updatedAt: Long)
+
     suspend fun add(
         displayName: String,
         avatar: String? = null,
@@ -32,6 +40,26 @@ class UserProfileRepositoryImpl(
 
     override fun observeAll(): Flow<List<UserProfile>> =
         queries.selectAll().asFlow().mapToList(ioDispatcher)
+
+    override suspend fun getOrCreateLocalProfile(updatedAt: Long): UserProfile = withContext(ioDispatcher) {
+        queries.selectAll().executeAsList().firstOrNull() ?: run {
+            queries.insert(
+                displayName = "You",
+                avatar = null,
+                isPublic = false,
+                streak = 0,
+                proUntil = null,
+                serverId = null,
+                updatedAt = updatedAt,
+                syncStatus = "PENDING",
+            )
+            queries.selectAll().executeAsList().first()
+        }
+    }
+
+    override suspend fun updateStreak(id: Long, streak: Long, updatedAt: Long) = withContext(ioDispatcher) {
+        queries.updateStreak(streak, updatedAt, id)
+    }
 
     override suspend fun add(
         displayName: String,

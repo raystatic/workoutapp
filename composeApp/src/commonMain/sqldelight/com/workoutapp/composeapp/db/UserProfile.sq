@@ -20,5 +20,8 @@ insert:
 INSERT INTO userProfile(displayName, avatar, isPublic, streak, proUntil, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 
+updateStreak:
+UPDATE userProfile SET streak = ?, updatedAt = ? WHERE id = ?;
+
 deleteById:
 DELETE FROM userProfile WHERE id = ?;

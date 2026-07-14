@@ -51,4 +51,33 @@ class UserProfileRepositoryTest {
         val remaining = repository.observeAll().first()
         assertEquals(listOf("Sam"), remaining.map { it.displayName })
     }
+
+    @Test
+    fun getOrCreateLocalProfile_noProfileYet_createsADefaultOne() = runTest {
+        val profile = repository.getOrCreateLocalProfile(updatedAt = 1000L)
+
+        assertEquals("You", profile.displayName)
+        assertEquals(0L, profile.streak)
+        assertEquals(listOf(profile), repository.observeAll().first())
+    }
+
+    @Test
+    fun getOrCreateLocalProfile_calledAgain_returnsTheSameProfile() = runTest {
+        val first = repository.getOrCreateLocalProfile(updatedAt = 1000L)
+
+        val second = repository.getOrCreateLocalProfile(updatedAt = 2000L)
+
+        assertEquals(first.id, second.id)
+        assertEquals(1, repository.observeAll().first().size)
+    }
+
+    @Test
+    fun updateStreak_updatesTheStreakOnThatProfile() = runTest {
+        val profile = repository.getOrCreateLocalProfile(updatedAt = 1000L)
+
+        repository.updateStreak(profile.id, streak = 5L, updatedAt = 2000L)
+
+        val updated = repository.observeAll().first().single()
+        assertEquals(5L, updated.streak)
+    }
 }

@@ -24,6 +24,12 @@ insert:
 INSERT INTO workout(name, startedAt, finishedAt, note, privacy, media, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+update:
+UPDATE workout SET name = ?, finishedAt = ?, note = ?, privacy = ?, media = ?, updatedAt = ? WHERE id = ?;
+
+selectFinishedAtTimestamps:
+SELECT finishedAt FROM workout WHERE finishedAt IS NOT NULL;
+
 lastInsertRowId:
 SELECT last_insert_rowid();
 
