@@ -3,6 +3,7 @@ package com.workoutapp.composeapp.ui.activeworkout
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.WorkoutPrivacy
 import com.workoutapp.composeapp.data.library.ExerciseRepository
+import com.workoutapp.composeapp.data.resttimer.RestTimerSettingsRepository
 import com.workoutapp.composeapp.data.workout.PreviousSetResolver
 import com.workoutapp.composeapp.data.workout.WorkoutExerciseRepository
 import com.workoutapp.composeapp.data.workout.WorkoutRepository
@@ -11,6 +12,7 @@ import com.workoutapp.composeapp.db.Exercise
 import com.workoutapp.composeapp.db.Workout
 import com.workoutapp.composeapp.db.WorkoutExercise
 import com.workoutapp.composeapp.db.WorkoutSet
+import com.workoutapp.composeapp.ui.resttimer.RestTimerController
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -35,7 +37,8 @@ private fun workoutExercise(
     exerciseId: Long,
     position: Long,
     supersetGroup: String? = null,
-) = WorkoutExercise(id, workoutId, exerciseId, position, supersetGroup, null, null, 1_000L, "PENDING")
+    restSeconds: Long? = null,
+) = WorkoutExercise(id, workoutId, exerciseId, position, supersetGroup, restSeconds, null, null, 1_000L, "PENDING")
 
 private fun workoutSet(
     id: Long,
@@ -77,11 +80,12 @@ private class FakeWorkoutExerciseRepository(seed: List<WorkoutExercise>) : Worko
         exerciseId: Long,
         position: Long,
         supersetGroup: String?,
+        restSeconds: Long?,
         notes: String?,
         updatedAt: Long,
     ) {
         added += workoutId to exerciseId
-        exercisesFlow.update { it + workoutExercise(nextId++, workoutId, exerciseId, position) }
+        exercisesFlow.update { it + workoutExercise(nextId++, workoutId, exerciseId, position, restSeconds = restSeconds) }
     }
 
     override suspend fun updatePosition(id: Long, position: Long) {
@@ -90,6 +94,10 @@ private class FakeWorkoutExerciseRepository(seed: List<WorkoutExercise>) : Worko
 
     override suspend fun updateSupersetGroup(id: Long, supersetGroup: String?) {
         exercisesFlow.update { list -> list.map { if (it.id == id) it.copy(supersetGroup = supersetGroup) else it } }
+    }
+
+    override suspend fun updateRestSeconds(id: Long, restSeconds: Long?) {
+        exercisesFlow.update { list -> list.map { if (it.id == id) it.copy(restSeconds = restSeconds) else it } }
     }
 
     override suspend fun delete(id: Long) {
@@ -181,6 +189,21 @@ private class FakeExerciseRepository(seed: List<Exercise>) : ExerciseRepository 
     override suspend fun delete(id: Long) = Unit
 }
 
+private class FakeRestTimerController : RestTimerController {
+    val startCalls = mutableListOf<Pair<Long, Int>>()
+
+    override fun start(exerciseId: Long, seconds: Int) {
+        startCalls += exerciseId to seconds
+    }
+}
+
+private class FakeRestTimerSettingsRepository(private var defaultSeconds: Int = 90) : RestTimerSettingsRepository {
+    override suspend fun getDefaultRestSeconds(): Int = defaultSeconds
+    override suspend fun setDefaultRestSeconds(seconds: Int) {
+        defaultSeconds = seconds
+    }
+}
+
 class ActiveWorkoutStoreTest {
     private fun newStore(
         workout: Workout? = workout(1L),
@@ -189,6 +212,8 @@ class ActiveWorkoutStoreTest {
         exercises: List<Exercise> = emptyList(),
         otherWorkoutExercises: List<WorkoutExercise> = emptyList(),
         otherSets: List<WorkoutSet> = emptyList(),
+        restTimerController: FakeRestTimerController = FakeRestTimerController(),
+        defaultRestSeconds: Int = 90,
     ): ActiveWorkoutStore {
         val workoutExerciseRepository = FakeWorkoutExerciseRepository(workoutExercises + otherWorkoutExercises)
         val workoutSetRepository = FakeWorkoutSetRepository(sets + otherSets)
@@ -199,6 +224,8 @@ class ActiveWorkoutStoreTest {
             workoutSetRepository = workoutSetRepository,
             exerciseRepository = FakeExerciseRepository(exercises),
             previousSetResolver = PreviousSetResolver(workoutExerciseRepository, workoutSetRepository),
+            restTimerController = restTimerController,
+            restTimerSettingsRepository = FakeRestTimerSettingsRepository(defaultRestSeconds),
             dispatcher = UnconfinedTestDispatcher(),
         )
     }
@@ -316,6 +343,73 @@ class ActiveWorkoutStoreTest {
         store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
 
         assertTrue(store.state.value.exercises.single().sets.single().set.completed)
+    }
+
+    @Test
+    fun toggleSetComplete_fromIncompleteToComplete_startsRestTimerWithGlobalDefault() = runTest {
+        val restTimerController = FakeRestTimerController()
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L, completed = false)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            restTimerController = restTimerController,
+            defaultRestSeconds = 90,
+        )
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
+
+        assertEquals(listOf(100L to 90), restTimerController.startCalls)
+    }
+
+    @Test
+    fun toggleSetComplete_fromCompleteToIncomplete_doesNotStartRestTimer() = runTest {
+        val restTimerController = FakeRestTimerController()
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L, completed = true)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            restTimerController = restTimerController,
+        )
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
+
+        assertFalse(store.state.value.exercises.single().sets.single().set.completed)
+        assertTrue(restTimerController.startCalls.isEmpty())
+    }
+
+    @Test
+    fun toggleSetComplete_withPerExerciseOverride_usesOverrideInsteadOfGlobalDefault() = runTest {
+        val restTimerController = FakeRestTimerController()
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L, restSeconds = 45L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L, completed = false)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            restTimerController = restTimerController,
+            defaultRestSeconds = 90,
+        )
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
+
+        assertEquals(listOf(100L to 45), restTimerController.startCalls)
+    }
+
+    @Test
+    fun cycleRestOverride_stepsThroughPresetsAndWrapsBackToDefault() = runTest {
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+        )
+        fun currentRestSeconds() = store.state.value.exercises.single().restSeconds
+
+        assertNull(currentRestSeconds())
+        store.onIntent(ActiveWorkoutIntent.CycleRestOverride(10L))
+        assertEquals(30L, currentRestSeconds())
+        store.onIntent(ActiveWorkoutIntent.CycleRestOverride(10L))
+        assertEquals(60L, currentRestSeconds())
+        repeat(REST_OVERRIDE_PRESETS.size - 2) {
+            store.onIntent(ActiveWorkoutIntent.CycleRestOverride(10L))
+        }
+        assertNull(currentRestSeconds())
     }
 
     @Test

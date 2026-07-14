@@ -43,6 +43,7 @@ android {
 dependencies {
     implementation(project(":composeApp"))
     implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.core.ktx)
 
     androidTestImplementation(libs.androidx.test.junit)
     androidTestImplementation(libs.androidx.test.runner)

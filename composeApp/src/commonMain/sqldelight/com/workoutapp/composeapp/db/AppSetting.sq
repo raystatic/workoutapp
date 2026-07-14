@@ -1,0 +1,13 @@
+-- Small generic key/value store for app-wide preferences (e.g. the default
+-- rest-timer duration) that don't warrant their own table.
+CREATE TABLE appSetting (
+    settingKey TEXT NOT NULL PRIMARY KEY,
+    settingValue TEXT NOT NULL
+);
+
+selectByKey:
+SELECT settingValue FROM appSetting WHERE settingKey = ?;
+
+upsert:
+INSERT INTO appSetting(settingKey, settingValue) VALUES (?, ?)
+ON CONFLICT(settingKey) DO UPDATE SET settingValue = excluded.settingValue;

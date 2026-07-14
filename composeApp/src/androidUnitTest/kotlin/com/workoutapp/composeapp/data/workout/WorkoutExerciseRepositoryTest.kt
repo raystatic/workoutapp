@@ -93,6 +93,32 @@ class WorkoutExerciseRepositoryTest {
     }
 
     @Test
+    fun add_withRestSecondsOverride_persistsIt() = runTest {
+        repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, restSeconds = 45L, updatedAt = 1000L)
+
+        assertEquals(45L, repository.observeByWorkoutId(workoutId).first().single().restSeconds)
+    }
+
+    @Test
+    fun add_withoutRestSecondsOverride_defaultsToNull() = runTest {
+        repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+
+        assertNull(repository.observeByWorkoutId(workoutId).first().single().restSeconds)
+    }
+
+    @Test
+    fun updateRestSeconds_persistsTheNewValueAndClearingItSetsNull() = runTest {
+        repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByWorkoutId(workoutId).first().single().id
+
+        repository.updateRestSeconds(id, 60L)
+        assertEquals(60L, repository.observeByWorkoutId(workoutId).first().single().restSeconds)
+
+        repository.updateRestSeconds(id, null)
+        assertNull(repository.observeByWorkoutId(workoutId).first().single().restSeconds)
+    }
+
+    @Test
     fun delete_removesOnlyTheMatchingEntry() = runTest {
         repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
         val idToDelete = repository.observeByWorkoutId(workoutId).first().single().id
