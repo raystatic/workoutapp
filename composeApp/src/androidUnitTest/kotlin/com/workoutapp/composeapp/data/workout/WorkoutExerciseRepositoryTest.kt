@@ -10,6 +10,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class WorkoutExerciseRepositoryTest {
@@ -88,5 +89,86 @@ class WorkoutExerciseRepositoryTest {
 
         val remaining = repository.observeByWorkoutId(workoutId).first()
         assertTrue(remaining.isEmpty())
+    }
+
+    @Test
+    fun findMostRecentOtherWorkoutExerciseId_noPriorWorkout_returnsNull() = runTest {
+        repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+
+        val result = repository.findMostRecentOtherWorkoutExerciseId(exerciseId, excludingWorkoutId = workoutId)
+
+        assertNull(result)
+    }
+
+    @Test
+    fun findMostRecentOtherWorkoutExerciseId_returnsTheMostRecentOtherWorkoutsEntry() = runTest {
+        database.workoutQueries.insert(
+            name = "Earlier Session",
+            startedAt = 500L,
+            finishedAt = null,
+            note = null,
+            privacy = WorkoutPrivacy.PRIVATE,
+            media = emptyList(),
+            serverId = null,
+            updatedAt = 500L,
+            syncStatus = "PENDING",
+        )
+        val earlierWorkoutId = database.workoutQueries.selectAll().executeAsList().single { it.startedAt == 500L }.id
+        database.workoutQueries.insert(
+            name = "Latest Prior Session",
+            startedAt = 2000L,
+            finishedAt = null,
+            note = null,
+            privacy = WorkoutPrivacy.PRIVATE,
+            media = emptyList(),
+            serverId = null,
+            updatedAt = 2000L,
+            syncStatus = "PENDING",
+        )
+        val latestPriorWorkoutId =
+            database.workoutQueries.selectAll().executeAsList().single { it.startedAt == 2000L }.id
+
+        repository.add(workoutId = earlierWorkoutId, exerciseId = exerciseId, position = 0, updatedAt = 500L)
+        repository.add(workoutId = latestPriorWorkoutId, exerciseId = exerciseId, position = 0, updatedAt = 2000L)
+        repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+        val expectedId = repository.observeByWorkoutId(latestPriorWorkoutId).first().single().id
+
+        val result = repository.findMostRecentOtherWorkoutExerciseId(exerciseId, excludingWorkoutId = workoutId)
+
+        assertEquals(expectedId, result)
+    }
+
+    @Test
+    fun findMostRecentOtherWorkoutExerciseId_differentExercise_returnsNull() = runTest {
+        database.exerciseQueries.insert(
+            name = "Squat",
+            primaryMuscle = "Legs",
+            secondaryMuscles = emptyList(),
+            equipment = "Barbell",
+            mediaUrl = null,
+            isCustom = false,
+            instructions = null,
+            serverId = null,
+            updatedAt = 1000L,
+            syncStatus = "PENDING",
+        )
+        val otherExerciseId = database.exerciseQueries.selectAll().executeAsList().single { it.name == "Squat" }.id
+        database.workoutQueries.insert(
+            name = "Prior Session",
+            startedAt = 500L,
+            finishedAt = null,
+            note = null,
+            privacy = WorkoutPrivacy.PRIVATE,
+            media = emptyList(),
+            serverId = null,
+            updatedAt = 500L,
+            syncStatus = "PENDING",
+        )
+        val priorWorkoutId = database.workoutQueries.selectAll().executeAsList().single { it.startedAt == 500L }.id
+        repository.add(workoutId = priorWorkoutId, exerciseId = otherExerciseId, position = 0, updatedAt = 500L)
+
+        val result = repository.findMostRecentOtherWorkoutExerciseId(exerciseId, excludingWorkoutId = workoutId)
+
+        assertNull(result)
     }
 }

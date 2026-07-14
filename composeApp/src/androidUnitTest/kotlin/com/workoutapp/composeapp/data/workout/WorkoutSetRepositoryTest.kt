@@ -171,6 +171,21 @@ class WorkoutSetRepositoryTest {
     }
 
     @Test
+    fun getByWorkoutExerciseId_returnsSetsOrderedByPosition() = runTest {
+        repository.add(workoutExerciseId = workoutExerciseId, position = 1, reps = 5, updatedAt = 1000L)
+        repository.add(workoutExerciseId = workoutExerciseId, position = 0, reps = 10, updatedAt = 1000L)
+
+        val sets = repository.getByWorkoutExerciseId(workoutExerciseId)
+
+        assertEquals(listOf(10L, 5L), sets.map { it.reps })
+    }
+
+    @Test
+    fun getByWorkoutExerciseId_noSets_returnsEmptyList() = runTest {
+        assertEquals(emptyList(), repository.getByWorkoutExerciseId(workoutExerciseId))
+    }
+
+    @Test
     fun delete_removesTheSet() = runTest {
         repository.add(workoutExerciseId = workoutExerciseId, position = 0, updatedAt = 1000L)
         val idToDelete = repository.observeByWorkoutExerciseId(workoutExerciseId).first().single().id

@@ -24,6 +24,13 @@ interface WorkoutExerciseRepository {
     suspend fun updatePosition(id: Long, position: Long)
 
     suspend fun delete(id: Long)
+
+    /**
+     * The id of the [WorkoutExercise] for [exerciseId] from the most recent
+     * workout other than [excludingWorkoutId] that included it, or `null` if
+     * there's no prior history for that exercise.
+     */
+    suspend fun findMostRecentOtherWorkoutExerciseId(exerciseId: Long, excludingWorkoutId: Long): Long?
 }
 
 class WorkoutExerciseRepositoryImpl(
@@ -62,4 +69,9 @@ class WorkoutExerciseRepositoryImpl(
     override suspend fun delete(id: Long) = withContext(ioDispatcher) {
         queries.deleteById(id)
     }
+
+    override suspend fun findMostRecentOtherWorkoutExerciseId(exerciseId: Long, excludingWorkoutId: Long): Long? =
+        withContext(ioDispatcher) {
+            queries.selectMostRecentOtherWorkoutExerciseId(exerciseId, excludingWorkoutId).executeAsOneOrNull()
+        }
 }
