@@ -16,6 +16,11 @@ sealed class AppDestination(val route: String, val label: String) {
         fun route(workoutId: Long): String = "active_workout/$workoutId"
     }
 
+    /** Pushed from [ActiveWorkout] to finish/save the workout and show the post-save summary. */
+    data object FinishWorkout : AppDestination("finish_workout/{workoutId}", "Finish Workout") {
+        fun route(workoutId: Long): String = "finish_workout/$workoutId"
+    }
+
     companion object {
         val bottomTabs: List<AppDestination> = listOf(Workout, Profile)
     }

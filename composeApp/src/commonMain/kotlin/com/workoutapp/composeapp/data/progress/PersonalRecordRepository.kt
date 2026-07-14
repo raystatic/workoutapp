@@ -12,6 +12,9 @@ import kotlinx.coroutines.withContext
 interface PersonalRecordRepository {
     fun observeByExerciseId(exerciseId: Long): Flow<List<PersonalRecord>>
 
+    /** The current best (highest) value recorded for [exerciseId]/[type], or `null` if none yet. */
+    suspend fun getBestValue(exerciseId: Long, type: String): Double?
+
     suspend fun add(
         exerciseId: Long,
         type: String,
@@ -31,6 +34,10 @@ class PersonalRecordRepositoryImpl(
 
     override fun observeByExerciseId(exerciseId: Long): Flow<List<PersonalRecord>> =
         queries.selectByExerciseId(exerciseId).asFlow().mapToList(ioDispatcher)
+
+    override suspend fun getBestValue(exerciseId: Long, type: String): Double? = withContext(ioDispatcher) {
+        queries.selectBestValueByExerciseIdAndType(exerciseId, type).executeAsOne()
+    }
 
     override suspend fun add(
         exerciseId: Long,

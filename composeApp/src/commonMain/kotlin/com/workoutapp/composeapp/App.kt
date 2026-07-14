@@ -18,6 +18,7 @@ import com.workoutapp.composeapp.ui.designsystem.catalog.ComponentCatalogScreen
 import com.workoutapp.composeapp.ui.designsystem.components.AppBottomTabBar
 import com.workoutapp.composeapp.ui.designsystem.components.BottomTabItem
 import com.workoutapp.composeapp.ui.designsystem.theme.WorkoutAppTheme
+import com.workoutapp.composeapp.ui.finishworkout.FinishWorkoutScreen
 import com.workoutapp.composeapp.ui.profile.ProfileScreen
 import com.workoutapp.composeapp.ui.workout.WorkoutScreen
 
@@ -84,7 +85,22 @@ fun App() {
                     arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
                 ) { backStackEntry ->
                     val workoutId = backStackEntry.arguments?.read { getLong("workoutId") } ?: 0L
-                    ActiveWorkoutScreen(workoutId = workoutId, onBack = { navController.popBackStack() })
+                    ActiveWorkoutScreen(
+                        workoutId = workoutId,
+                        onBack = { navController.popBackStack() },
+                        onFinish = { navController.navigate(AppDestination.FinishWorkout.route(it)) },
+                    )
+                }
+                composable(
+                    route = AppDestination.FinishWorkout.route,
+                    arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
+                ) { backStackEntry ->
+                    val workoutId = backStackEntry.arguments?.read { getLong("workoutId") } ?: 0L
+                    FinishWorkoutScreen(
+                        workoutId = workoutId,
+                        onBack = { navController.popBackStack() },
+                        onDone = { navController.popBackStack(AppDestination.Workout.route, false) },
+                    )
                 }
             }
         }
