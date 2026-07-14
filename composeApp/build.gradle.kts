@@ -50,6 +50,7 @@ kotlin {
         }
         androidMain.dependencies {
             implementation(libs.androidx.activity.compose)
+            implementation(libs.androidx.core.ktx)
             implementation(libs.koin.android)
             implementation(libs.sqldelight.android.driver)
         }

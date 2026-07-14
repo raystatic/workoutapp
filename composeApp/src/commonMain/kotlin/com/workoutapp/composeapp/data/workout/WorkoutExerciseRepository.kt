@@ -17,6 +17,7 @@ interface WorkoutExerciseRepository {
         exerciseId: Long,
         position: Long = 0,
         supersetGroup: String? = null,
+        restSeconds: Long? = null,
         notes: String? = null,
         updatedAt: Long,
     )
@@ -24,6 +25,8 @@ interface WorkoutExerciseRepository {
     suspend fun updatePosition(id: Long, position: Long)
 
     suspend fun updateSupersetGroup(id: Long, supersetGroup: String?)
+
+    suspend fun updateRestSeconds(id: Long, restSeconds: Long?)
 
     suspend fun delete(id: Long)
 
@@ -49,6 +52,7 @@ class WorkoutExerciseRepositoryImpl(
         exerciseId: Long,
         position: Long,
         supersetGroup: String?,
+        restSeconds: Long?,
         notes: String?,
         updatedAt: Long,
     ) = withContext(ioDispatcher) {
@@ -57,6 +61,7 @@ class WorkoutExerciseRepositoryImpl(
             exerciseId = exerciseId,
             position = position,
             supersetGroup = supersetGroup,
+            restSeconds = restSeconds,
             notes = notes,
             serverId = null,
             updatedAt = updatedAt,
@@ -70,6 +75,10 @@ class WorkoutExerciseRepositoryImpl(
 
     override suspend fun updateSupersetGroup(id: Long, supersetGroup: String?) = withContext(ioDispatcher) {
         queries.updateSupersetGroup(supersetGroup, id)
+    }
+
+    override suspend fun updateRestSeconds(id: Long, restSeconds: Long?) = withContext(ioDispatcher) {
+        queries.updateRestSeconds(restSeconds, id)
     }
 
     override suspend fun delete(id: Long) = withContext(ioDispatcher) {

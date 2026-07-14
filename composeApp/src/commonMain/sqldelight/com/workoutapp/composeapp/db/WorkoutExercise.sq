@@ -4,6 +4,7 @@ CREATE TABLE workoutExercise (
     exerciseId INTEGER NOT NULL,
     position INTEGER NOT NULL DEFAULT 0,
     supersetGroup TEXT,
+    restSeconds INTEGER,
     notes TEXT,
     serverId TEXT,
     updatedAt INTEGER NOT NULL,
@@ -26,14 +27,17 @@ ORDER BY workout.startedAt DESC, workoutExercise.id DESC
 LIMIT 1;
 
 insert:
-INSERT INTO workoutExercise(workoutId, exerciseId, position, supersetGroup, notes, serverId, updatedAt, syncStatus)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO workoutExercise(workoutId, exerciseId, position, supersetGroup, restSeconds, notes, serverId, updatedAt, syncStatus)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 updatePosition:
 UPDATE workoutExercise SET position = ? WHERE id = ?;
 
 updateSupersetGroup:
 UPDATE workoutExercise SET supersetGroup = ? WHERE id = ?;
+
+updateRestSeconds:
+UPDATE workoutExercise SET restSeconds = ? WHERE id = ?;
 
 deleteById:
 DELETE FROM workoutExercise WHERE id = ?;

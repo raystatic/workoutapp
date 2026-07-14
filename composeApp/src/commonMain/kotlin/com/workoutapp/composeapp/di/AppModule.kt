@@ -14,6 +14,8 @@ import com.workoutapp.composeapp.data.progress.BodyMeasurementRepository
 import com.workoutapp.composeapp.data.progress.BodyMeasurementRepositoryImpl
 import com.workoutapp.composeapp.data.progress.PersonalRecordRepository
 import com.workoutapp.composeapp.data.progress.PersonalRecordRepositoryImpl
+import com.workoutapp.composeapp.data.resttimer.RestTimerSettingsRepository
+import com.workoutapp.composeapp.data.resttimer.RestTimerSettingsRepositoryImpl
 import com.workoutapp.composeapp.data.routines.RoutineExerciseRepository
 import com.workoutapp.composeapp.data.routines.RoutineExerciseRepositoryImpl
 import com.workoutapp.composeapp.data.routines.RoutineRepository
@@ -33,8 +35,11 @@ import com.workoutapp.composeapp.db.RoutineSet
 import com.workoutapp.composeapp.db.Workout
 import com.workoutapp.composeapp.db.WorkoutSet
 import com.workoutapp.composeapp.ui.activeworkout.ActiveWorkoutStore
+import com.workoutapp.composeapp.ui.resttimer.RestTimerController
+import com.workoutapp.composeapp.ui.resttimer.RestTimerStore
 import com.workoutapp.composeapp.ui.workout.WorkoutStore
 import org.koin.core.module.Module
+import org.koin.dsl.bind
 import org.koin.dsl.module
 
 /** Platform-specific bindings (currently just [DatabaseDriverFactory]). */
@@ -64,7 +69,9 @@ val appModule = module {
     single<BodyMeasurementRepository> { BodyMeasurementRepositoryImpl(get()) }
     single<PersonalRecordRepository> { PersonalRecordRepositoryImpl(get()) }
     single<UserProfileRepository> { UserProfileRepositoryImpl(get()) }
+    single<RestTimerSettingsRepository> { RestTimerSettingsRepositoryImpl(get()) }
     single { PreviousSetResolver(get(), get()) }
     single { WorkoutStore(get(), get()) }
-    factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get(), get()) }
+    single { RestTimerStore(get()) } bind RestTimerController::class
+    factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get()) }
 }

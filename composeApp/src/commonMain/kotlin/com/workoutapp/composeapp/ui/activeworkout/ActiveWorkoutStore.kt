@@ -3,6 +3,8 @@ package com.workoutapp.composeapp.ui.activeworkout
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.currentTimeMillis
 import com.workoutapp.composeapp.data.library.ExerciseRepository
+import com.workoutapp.composeapp.data.resttimer.RestTimerSettingsRepository
+import com.workoutapp.composeapp.data.resttimer.resolveRestSeconds
 import com.workoutapp.composeapp.data.workout.PreviousSetResolver
 import com.workoutapp.composeapp.data.workout.WorkoutExerciseRepository
 import com.workoutapp.composeapp.data.workout.WorkoutRepository
@@ -14,6 +16,7 @@ import com.workoutapp.composeapp.mvi.MviEffect
 import com.workoutapp.composeapp.mvi.MviIntent
 import com.workoutapp.composeapp.mvi.MviState
 import com.workoutapp.composeapp.mvi.StoreViewModel
+import com.workoutapp.composeapp.ui.resttimer.RestTimerController
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.combine
@@ -41,6 +44,8 @@ data class ActiveWorkoutExerciseUi(
     val supersetLabel: String? = null,
     /** True when this is the group member with the fewest completed sets — i.e. whose turn is next. */
     val isUpNextInSuperset: Boolean = false,
+    /** Per-exercise rest-timer override; `null` means "use the global default". */
+    val restSeconds: Long? = null,
 )
 
 data class ActiveWorkoutState(
@@ -67,7 +72,11 @@ sealed interface ActiveWorkoutIntent : MviIntent {
     data class MoveExerciseDown(val workoutExerciseId: Long) : ActiveWorkoutIntent
     data class GroupWithNextExercise(val workoutExerciseId: Long) : ActiveWorkoutIntent
     data class RemoveFromSuperset(val workoutExerciseId: Long) : ActiveWorkoutIntent
+    data class CycleRestOverride(val workoutExerciseId: Long) : ActiveWorkoutIntent
 }
+
+/** Rest-timer override presets cycled by [ActiveWorkoutIntent.CycleRestOverride]: default, then 30s..240s, then back. */
+val REST_OVERRIDE_PRESETS: List<Long?> = listOf(null, 30L, 60L, 90L, 120L, 180L, 240L)
 
 /** No effects currently fire; the type exists so [StoreViewModel] can be parameterized. */
 sealed interface ActiveWorkoutEffect : MviEffect
@@ -90,6 +99,8 @@ class ActiveWorkoutStore(
     private val workoutSetRepository: WorkoutSetRepository,
     private val exerciseRepository: ExerciseRepository,
     private val previousSetResolver: PreviousSetResolver,
+    private val restTimerController: RestTimerController,
+    private val restTimerSettingsRepository: RestTimerSettingsRepository,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : StoreViewModel<ActiveWorkoutState, ActiveWorkoutIntent, ActiveWorkoutEffect>(
     ActiveWorkoutState(workoutId = workoutId),
@@ -140,7 +151,7 @@ class ActiveWorkoutStore(
         when (intent) {
             is ActiveWorkoutIntent.AddSet -> addSet(intent.workoutExerciseId)
             is ActiveWorkoutIntent.RemoveSet -> scope.launch { workoutSetRepository.delete(intent.setId) }
-            is ActiveWorkoutIntent.ToggleSetComplete -> updateSet(intent.setId) { it.copy(completed = !it.completed) }
+            is ActiveWorkoutIntent.ToggleSetComplete -> toggleSetComplete(intent.setId)
             is ActiveWorkoutIntent.UpdateReps -> updateSet(intent.setId) { it.copy(reps = intent.value.toLongOrNull()) }
             is ActiveWorkoutIntent.UpdateWeight -> updateSet(intent.setId) { it.copy(weight = intent.value.toDoubleOrNull()) }
             is ActiveWorkoutIntent.UpdateDuration ->
@@ -155,6 +166,7 @@ class ActiveWorkoutStore(
             is ActiveWorkoutIntent.MoveExerciseDown -> moveExercise(intent.workoutExerciseId, offset = 1)
             is ActiveWorkoutIntent.GroupWithNextExercise -> groupWithNextExercise(intent.workoutExerciseId)
             is ActiveWorkoutIntent.RemoveFromSuperset -> removeFromSuperset(intent.workoutExerciseId)
+            is ActiveWorkoutIntent.CycleRestOverride -> cycleRestOverride(intent.workoutExerciseId)
         }
     }
 
@@ -171,6 +183,28 @@ class ActiveWorkoutStore(
                 position = nextPosition,
                 updatedAt = currentTimeMillis(),
             )
+        }
+    }
+
+    /** Auto-starts the rest timer only on the incomplete → complete transition, never on undo. */
+    private fun toggleSetComplete(setId: Long) {
+        val exerciseUi = state.value.exercises.firstOrNull { ex -> ex.sets.any { it.set.id == setId } }
+        val wasCompleted = exerciseUi?.sets?.firstOrNull { it.set.id == setId }?.set?.completed
+        updateSet(setId) { it.copy(completed = !it.completed) }
+        if (exerciseUi != null && wasCompleted == false) {
+            scope.launch {
+                val defaultSeconds = restTimerSettingsRepository.getDefaultRestSeconds()
+                val seconds = resolveRestSeconds(exerciseUi.restSeconds, defaultSeconds)
+                restTimerController.start(exerciseUi.exerciseId, seconds)
+            }
+        }
+    }
+
+    private fun cycleRestOverride(workoutExerciseId: Long) {
+        val current = state.value.exercises.firstOrNull { it.workoutExerciseId == workoutExerciseId } ?: return
+        val nextIndex = (REST_OVERRIDE_PRESETS.indexOf(current.restSeconds) + 1) % REST_OVERRIDE_PRESETS.size
+        scope.launch {
+            workoutExerciseRepository.updateRestSeconds(workoutExerciseId, REST_OVERRIDE_PRESETS[nextIndex])
         }
     }
 
@@ -297,6 +331,7 @@ private fun WorkoutExercise.toUi(
     exerciseName = exerciseName,
     position = position,
     supersetGroup = supersetGroup,
+    restSeconds = restSeconds,
     sets = sets.mapIndexed { index, set ->
         val previous = previousSets.getOrNull(index)
         ActiveWorkoutSetUi(

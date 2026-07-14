@@ -1,0 +1,6 @@
+ALTER TABLE workoutExercise ADD COLUMN restSeconds INTEGER;
+
+CREATE TABLE appSetting (
+    settingKey TEXT NOT NULL PRIMARY KEY,
+    settingValue TEXT NOT NULL
+);

@@ -51,6 +51,9 @@ import com.workoutapp.composeapp.ui.designsystem.components.PrimaryButton
 import com.workoutapp.composeapp.ui.designsystem.components.SecondaryButton
 import com.workoutapp.composeapp.ui.designsystem.components.SetTypeIndicator
 import com.workoutapp.composeapp.ui.designsystem.theme.LocalSpacing
+import com.workoutapp.composeapp.ui.resttimer.RestTimerIntent
+import com.workoutapp.composeapp.ui.resttimer.RestTimerState
+import com.workoutapp.composeapp.ui.resttimer.RestTimerStore
 import kotlinx.coroutines.delay
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
@@ -70,8 +73,10 @@ fun ActiveWorkoutScreen(
     workoutId: Long,
     onBack: () -> Unit = {},
     store: ActiveWorkoutStore = koinInject { parametersOf(workoutId) },
+    restTimerStore: RestTimerStore = koinInject(),
 ) {
     val state by store.state.collectAsState()
+    val restTimerState by restTimerStore.state.collectAsState()
     val spacing = LocalSpacing.current
     val elapsedSeconds = rememberElapsedSeconds(state.startedAt)
 
@@ -89,6 +94,11 @@ fun ActiveWorkoutScreen(
             style = MaterialTheme.typography.headlineMedium,
             modifier = Modifier.padding(spacing.md).testTag("workout_timer"),
         )
+
+        val runningRestTimer = restTimerState as? RestTimerState.Running
+        if (runningRestTimer != null) {
+            RestTimerBanner(runningRestTimer, onIntent = restTimerStore::onIntent)
+        }
 
         Box(modifier = Modifier.fillMaxSize()) {
             if (state.exercises.isEmpty()) {
@@ -130,6 +140,45 @@ fun ActiveWorkoutScreen(
             onSelect = { store.onIntent(ActiveWorkoutIntent.AddExercise(it)) },
             onDismiss = { store.onIntent(ActiveWorkoutIntent.HideAddExercise) },
         )
+    }
+}
+
+@Composable
+private fun RestTimerBanner(
+    running: RestTimerState.Running,
+    onIntent: (RestTimerIntent) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val spacing = LocalSpacing.current
+    AppCard(modifier = modifier.fillMaxWidth().padding(horizontal = spacing.md).testTag("rest_timer_banner")) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Rest: ${formatElapsedDuration(running.remainingSeconds.toLong())}",
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.testTag("rest_timer_remaining"),
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs), verticalAlignment = Alignment.CenterVertically) {
+                SecondaryButton(
+                    text = "-15s",
+                    onClick = { onIntent(RestTimerIntent.SubtractFifteenSeconds) },
+                    modifier = Modifier.testTag("rest_timer_minus_15"),
+                )
+                SecondaryButton(
+                    text = "+15s",
+                    onClick = { onIntent(RestTimerIntent.AddFifteenSeconds) },
+                    modifier = Modifier.testTag("rest_timer_plus_15"),
+                )
+                SecondaryButton(
+                    text = "Skip",
+                    onClick = { onIntent(RestTimerIntent.Skip) },
+                    modifier = Modifier.testTag("rest_timer_skip"),
+                )
+            }
+        }
     }
 }
 
@@ -189,6 +238,11 @@ private fun ExerciseCard(
                     text = exercise.exerciseName,
                     style = MaterialTheme.typography.titleMedium,
                     modifier = Modifier.testTag("exercise_name_${exercise.workoutExerciseId}"),
+                )
+                AssistChip(
+                    onClick = { onIntent(ActiveWorkoutIntent.CycleRestOverride(exercise.workoutExerciseId)) },
+                    label = { Text(formatRestOverride(exercise.restSeconds)) },
+                    modifier = Modifier.testTag("rest_override_chip_${exercise.workoutExerciseId}"),
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -386,6 +440,10 @@ private fun rememberElapsedSeconds(startedAt: Long?): Long {
     }
     return elapsed
 }
+
+/** Label for the per-exercise rest-timer override chip; `null` means "use the global default". */
+private fun formatRestOverride(restSeconds: Long?): String =
+    if (restSeconds == null) "Rest: Default" else "Rest: ${restSeconds}s"
 
 private fun DbSetType.toUi(): UiSetType = UiSetType.valueOf(name)
 
