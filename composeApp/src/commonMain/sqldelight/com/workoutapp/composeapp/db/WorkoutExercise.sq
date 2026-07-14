@@ -18,6 +18,13 @@ SELECT * FROM workoutExercise WHERE workoutId = ? ORDER BY position ASC;
 selectById:
 SELECT * FROM workoutExercise WHERE id = ?;
 
+selectMostRecentOtherWorkoutExerciseId:
+SELECT workoutExercise.id FROM workoutExercise
+JOIN workout ON workoutExercise.workoutId = workout.id
+WHERE workoutExercise.exerciseId = ? AND workoutExercise.workoutId != ?
+ORDER BY workout.startedAt DESC, workoutExercise.id DESC
+LIMIT 1;
+
 insert:
 INSERT INTO workoutExercise(workoutId, exerciseId, position, supersetGroup, notes, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);

@@ -3,6 +3,7 @@ package com.workoutapp.composeapp.ui.activeworkout
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.currentTimeMillis
 import com.workoutapp.composeapp.data.library.ExerciseRepository
+import com.workoutapp.composeapp.data.workout.PreviousSetResolver
 import com.workoutapp.composeapp.data.workout.WorkoutExerciseRepository
 import com.workoutapp.composeapp.data.workout.WorkoutRepository
 import com.workoutapp.composeapp.data.workout.WorkoutSetRepository
@@ -20,13 +21,21 @@ import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.launch
 
+/** A set row paired with the matching set (by position) from the most recent prior workout, if any. */
+data class ActiveWorkoutSetUi(
+    val set: WorkoutSet,
+    val previousReps: Long? = null,
+    val previousWeight: Double? = null,
+    val previousDurationSec: Long? = null,
+)
+
 /** One exercise within the in-progress workout, with its sets in logging order. */
 data class ActiveWorkoutExerciseUi(
     val workoutExerciseId: Long,
     val exerciseId: Long,
     val exerciseName: String,
     val position: Long,
-    val sets: List<WorkoutSet>,
+    val sets: List<ActiveWorkoutSetUi>,
 )
 
 data class ActiveWorkoutState(
@@ -73,11 +82,16 @@ class ActiveWorkoutStore(
     private val workoutExerciseRepository: WorkoutExerciseRepository,
     private val workoutSetRepository: WorkoutSetRepository,
     private val exerciseRepository: ExerciseRepository,
+    private val previousSetResolver: PreviousSetResolver,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : StoreViewModel<ActiveWorkoutState, ActiveWorkoutIntent, ActiveWorkoutEffect>(
     ActiveWorkoutState(workoutId = workoutId),
     dispatcher,
 ) {
+    // Previous-workout sets don't change during this session, so cache per exerciseId to
+    // avoid re-querying on every edit to the in-progress workout's own sets.
+    private val previousSetsCache = mutableMapOf<Long, List<WorkoutSet>>()
+
     init {
         combine(
             workoutRepository.observeById(workoutId),
@@ -92,9 +106,13 @@ class ActiveWorkoutStore(
                 exercises = workoutExercises
                     .sortedBy { it.position }
                     .map { workoutExercise ->
+                        val previousSets = previousSetsCache.getOrPut(workoutExercise.exerciseId) {
+                            previousSetResolver.resolve(workoutExercise.exerciseId, workoutId)
+                        }
                         workoutExercise.toUi(
                             exerciseName = exerciseNames[workoutExercise.exerciseId]?.name ?: "Unknown exercise",
                             sets = setsByExercise[workoutExercise.id].orEmpty().sortedBy { it.position },
+                            previousSets = previousSets,
                         )
                     },
                 availableExercises = exercises,
@@ -150,6 +168,7 @@ class ActiveWorkoutStore(
         val current = state.value.exercises
             .asSequence()
             .flatMap { it.sets }
+            .map { it.set }
             .firstOrNull { it.id == setId }
             ?: return
         val updated = mutate(current)
@@ -193,12 +212,24 @@ class ActiveWorkoutStore(
     }
 }
 
-private fun WorkoutExercise.toUi(exerciseName: String, sets: List<WorkoutSet>) = ActiveWorkoutExerciseUi(
+private fun WorkoutExercise.toUi(
+    exerciseName: String,
+    sets: List<WorkoutSet>,
+    previousSets: List<WorkoutSet>,
+) = ActiveWorkoutExerciseUi(
     workoutExerciseId = id,
     exerciseId = exerciseId,
     exerciseName = exerciseName,
     position = position,
-    sets = sets,
+    sets = sets.mapIndexed { index, set ->
+        val previous = previousSets.getOrNull(index)
+        ActiveWorkoutSetUi(
+            set = set,
+            previousReps = previous?.reps,
+            previousWeight = previous?.weight,
+            previousDurationSec = previous?.durationSec,
+        )
+    },
 )
 
 private fun SetType.next(): SetType {

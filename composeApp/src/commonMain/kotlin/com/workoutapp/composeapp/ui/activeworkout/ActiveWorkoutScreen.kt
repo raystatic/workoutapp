@@ -35,7 +35,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import com.workoutapp.composeapp.data.db.currentTimeMillis
 import com.workoutapp.composeapp.db.Exercise
-import com.workoutapp.composeapp.db.WorkoutSet
 import com.workoutapp.composeapp.ui.designsystem.components.AppCard
 import com.workoutapp.composeapp.ui.designsystem.components.AppListRow
 import com.workoutapp.composeapp.ui.designsystem.components.AppNumberField
@@ -164,8 +163,8 @@ private fun ExerciseCard(
         }
 
         Column(verticalArrangement = Arrangement.spacedBy(spacing.xs)) {
-            exercise.sets.forEach { set ->
-                SetRow(set = set, onIntent = onIntent)
+            exercise.sets.forEach { setUi ->
+                SetRow(setUi = setUi, onIntent = onIntent)
             }
         }
 
@@ -179,8 +178,9 @@ private fun ExerciseCard(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SetRow(set: WorkoutSet, onIntent: (ActiveWorkoutIntent) -> Unit, modifier: Modifier = Modifier) {
+private fun SetRow(setUi: ActiveWorkoutSetUi, onIntent: (ActiveWorkoutIntent) -> Unit, modifier: Modifier = Modifier) {
     val spacing = LocalSpacing.current
+    val set = setUi.set
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value != SwipeToDismissBoxValue.Settled) {
@@ -206,47 +206,71 @@ private fun SetRow(set: WorkoutSet, onIntent: (ActiveWorkoutIntent) -> Unit, mod
             }
         },
     ) {
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth()
                 .background(MaterialTheme.colorScheme.surface)
                 .padding(vertical = spacing.xs),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(spacing.xs),
         ) {
-            SetTypeIndicator(
-                type = set.setType.toUi(),
-                modifier = Modifier
-                    .testTag("set_type_${set.id}")
-                    .clickable { onIntent(ActiveWorkoutIntent.CycleSetType(set.id)) },
+            Text(
+                text = formatPrevious(setUi),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.testTag("previous_set_${set.id}"),
             )
-            AppNumberField(
-                value = set.weight?.let(::formatNumber) ?: "",
-                onValueChange = { onIntent(ActiveWorkoutIntent.UpdateWeight(set.id, it)) },
-                label = "Weight",
-                modifier = Modifier.width(90.dp).testTag("set_weight_${set.id}"),
-            )
-            AppNumberField(
-                value = set.reps?.toString() ?: "",
-                onValueChange = { onIntent(ActiveWorkoutIntent.UpdateReps(set.id, it)) },
-                label = "Reps",
-                modifier = Modifier.width(80.dp).testTag("set_reps_${set.id}"),
-            )
-            AppNumberField(
-                value = set.durationSec?.toString() ?: "",
-                onValueChange = { onIntent(ActiveWorkoutIntent.UpdateDuration(set.id, it)) },
-                label = "Sec",
-                modifier = Modifier.width(80.dp).testTag("set_duration_${set.id}"),
-            )
-            Checkbox(
-                checked = set.completed,
-                onCheckedChange = { onIntent(ActiveWorkoutIntent.ToggleSetComplete(set.id)) },
-                modifier = Modifier.testTag("set_complete_${set.id}"),
-            )
-            IconButton(
-                onClick = { onIntent(ActiveWorkoutIntent.RemoveSet(set.id)) },
-                modifier = Modifier.testTag("remove_set_${set.id}"),
-            ) { Text("✕") }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(spacing.xs),
+            ) {
+                SetTypeIndicator(
+                    type = set.setType.toUi(),
+                    modifier = Modifier
+                        .testTag("set_type_${set.id}")
+                        .clickable { onIntent(ActiveWorkoutIntent.CycleSetType(set.id)) },
+                )
+                AppNumberField(
+                    value = set.weight?.let(::formatNumber) ?: "",
+                    onValueChange = { onIntent(ActiveWorkoutIntent.UpdateWeight(set.id, it)) },
+                    label = "Weight",
+                    modifier = Modifier.width(90.dp).testTag("set_weight_${set.id}"),
+                )
+                AppNumberField(
+                    value = set.reps?.toString() ?: "",
+                    onValueChange = { onIntent(ActiveWorkoutIntent.UpdateReps(set.id, it)) },
+                    label = "Reps",
+                    modifier = Modifier.width(80.dp).testTag("set_reps_${set.id}"),
+                )
+                AppNumberField(
+                    value = set.durationSec?.toString() ?: "",
+                    onValueChange = { onIntent(ActiveWorkoutIntent.UpdateDuration(set.id, it)) },
+                    label = "Sec",
+                    modifier = Modifier.width(80.dp).testTag("set_duration_${set.id}"),
+                )
+                Checkbox(
+                    checked = set.completed,
+                    onCheckedChange = { onIntent(ActiveWorkoutIntent.ToggleSetComplete(set.id)) },
+                    modifier = Modifier.testTag("set_complete_${set.id}"),
+                )
+                IconButton(
+                    onClick = { onIntent(ActiveWorkoutIntent.RemoveSet(set.id)) },
+                    modifier = Modifier.testTag("remove_set_${set.id}"),
+                ) { Text("✕") }
+            }
         }
+    }
+}
+
+/** Formats the "last time" hint shown above a set row; graceful when there's no history. */
+private fun formatPrevious(setUi: ActiveWorkoutSetUi): String {
+    val weight = setUi.previousWeight
+    val reps = setUi.previousReps
+    val duration = setUi.previousDurationSec
+    return when {
+        weight != null && reps != null -> "Previous: ${formatNumber(weight)} × $reps"
+        weight != null -> "Previous: ${formatNumber(weight)}"
+        reps != null -> "Previous: $reps reps"
+        duration != null -> "Previous: ${duration}s"
+        else -> "No previous data"
     }
 }
 

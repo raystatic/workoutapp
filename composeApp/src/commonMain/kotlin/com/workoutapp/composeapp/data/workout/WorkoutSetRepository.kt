@@ -15,6 +15,9 @@ interface WorkoutSetRepository {
 
     fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutSet>>
 
+    /** One-shot fetch of a workout exercise's sets, ordered by position. */
+    suspend fun getByWorkoutExerciseId(workoutExerciseId: Long): List<WorkoutSet>
+
     suspend fun add(
         workoutExerciseId: Long,
         position: Long = 0,
@@ -55,6 +58,11 @@ class WorkoutSetRepositoryImpl(
 
     override fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutSet>> =
         queries.selectByWorkoutId(workoutId).asFlow().mapToList(ioDispatcher)
+
+    override suspend fun getByWorkoutExerciseId(workoutExerciseId: Long): List<WorkoutSet> =
+        withContext(ioDispatcher) {
+            queries.selectByWorkoutExerciseId(workoutExerciseId).executeAsList()
+        }
 
     override suspend fun add(
         workoutExerciseId: Long,

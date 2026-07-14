@@ -3,6 +3,7 @@ package com.workoutapp.composeapp.ui.activeworkout
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.WorkoutPrivacy
 import com.workoutapp.composeapp.data.library.ExerciseRepository
+import com.workoutapp.composeapp.data.workout.PreviousSetResolver
 import com.workoutapp.composeapp.data.workout.WorkoutExerciseRepository
 import com.workoutapp.composeapp.data.workout.WorkoutRepository
 import com.workoutapp.composeapp.data.workout.WorkoutSetRepository
@@ -12,6 +13,7 @@ import com.workoutapp.composeapp.db.WorkoutExercise
 import com.workoutapp.composeapp.db.WorkoutSet
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -62,7 +64,8 @@ private class FakeWorkoutExerciseRepository(seed: List<WorkoutExercise>) : Worko
     private var nextId = (seed.maxOfOrNull { it.id } ?: 0L) + 1
     val added = mutableListOf<Pair<Long, Long>>()
 
-    override fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutExercise>> = exercisesFlow
+    override fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutExercise>> =
+        exercisesFlow.map { list -> list.filter { it.workoutId == workoutId } }
 
     override suspend fun add(
         workoutId: Long,
@@ -83,6 +86,12 @@ private class FakeWorkoutExerciseRepository(seed: List<WorkoutExercise>) : Worko
     override suspend fun delete(id: Long) {
         exercisesFlow.update { list -> list.filterNot { it.id == id } }
     }
+
+    override suspend fun findMostRecentOtherWorkoutExerciseId(exerciseId: Long, excludingWorkoutId: Long): Long? =
+        exercisesFlow.value
+            .filter { it.exerciseId == exerciseId && it.workoutId != excludingWorkoutId }
+            .maxByOrNull { it.id }
+            ?.id
 }
 
 private class FakeWorkoutSetRepository(seed: List<WorkoutSet>) : WorkoutSetRepository {
@@ -93,6 +102,9 @@ private class FakeWorkoutSetRepository(seed: List<WorkoutSet>) : WorkoutSetRepos
         MutableStateFlow(setsFlow.value.filter { it.workoutExerciseId == workoutExerciseId })
 
     override fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutSet>> = setsFlow
+
+    override suspend fun getByWorkoutExerciseId(workoutExerciseId: Long): List<WorkoutSet> =
+        setsFlow.value.filter { it.workoutExerciseId == workoutExerciseId }.sortedBy { it.position }
 
     override suspend fun add(
         workoutExerciseId: Long,
@@ -166,14 +178,21 @@ class ActiveWorkoutStoreTest {
         workoutExercises: List<WorkoutExercise> = emptyList(),
         sets: List<WorkoutSet> = emptyList(),
         exercises: List<Exercise> = emptyList(),
-    ): ActiveWorkoutStore = ActiveWorkoutStore(
-        workoutId = 1L,
-        workoutRepository = FakeWorkoutRepository(workout),
-        workoutExerciseRepository = FakeWorkoutExerciseRepository(workoutExercises),
-        workoutSetRepository = FakeWorkoutSetRepository(sets),
-        exerciseRepository = FakeExerciseRepository(exercises),
-        dispatcher = UnconfinedTestDispatcher(),
-    )
+        otherWorkoutExercises: List<WorkoutExercise> = emptyList(),
+        otherSets: List<WorkoutSet> = emptyList(),
+    ): ActiveWorkoutStore {
+        val workoutExerciseRepository = FakeWorkoutExerciseRepository(workoutExercises + otherWorkoutExercises)
+        val workoutSetRepository = FakeWorkoutSetRepository(sets + otherSets)
+        return ActiveWorkoutStore(
+            workoutId = 1L,
+            workoutRepository = FakeWorkoutRepository(workout),
+            workoutExerciseRepository = workoutExerciseRepository,
+            workoutSetRepository = workoutSetRepository,
+            exerciseRepository = FakeExerciseRepository(exercises),
+            previousSetResolver = PreviousSetResolver(workoutExerciseRepository, workoutSetRepository),
+            dispatcher = UnconfinedTestDispatcher(),
+        )
+    }
 
     @Test
     fun initialState_assemblesExercisesWithNamesAndSets() {
@@ -186,9 +205,80 @@ class ActiveWorkoutStoreTest {
         val exerciseUi = store.state.value.exercises.single()
         assertEquals("Bench Press", exerciseUi.exerciseName)
         assertEquals(1_000L, store.state.value.startedAt)
-        val set = exerciseUi.sets.single()
+        val set = exerciseUi.sets.single().set
         assertEquals(8L, set.reps)
         assertEquals(60.0, set.weight)
+    }
+
+    @Test
+    fun initialState_withPriorWorkoutForSameExercise_attachesPreviousValuesByPosition() {
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            otherWorkoutExercises = listOf(workoutExercise(20L, 2L, 100L, position = 0L)),
+            otherSets = listOf(workoutSet(60L, 20L, position = 0L, reps = 8L, weight = 60.0)),
+        )
+
+        val setUi = store.state.value.exercises.single().sets.single()
+        assertEquals(8L, setUi.previousReps)
+        assertEquals(60.0, setUi.previousWeight)
+    }
+
+    @Test
+    fun initialState_withNoPriorWorkoutForExercise_leavesPreviousValuesNull() {
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+        )
+
+        val setUi = store.state.value.exercises.single().sets.single()
+        assertNull(setUi.previousReps)
+        assertNull(setUi.previousWeight)
+        assertNull(setUi.previousDurationSec)
+    }
+
+    @Test
+    fun initialState_withMultiplePriorWorkouts_usesTheMostRecentOne() {
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            otherWorkoutExercises = listOf(
+                workoutExercise(20L, 2L, 100L, position = 0L),
+                workoutExercise(30L, 3L, 100L, position = 0L),
+            ),
+            otherSets = listOf(
+                workoutSet(60L, 20L, position = 0L, reps = 5L, weight = 40.0),
+                workoutSet(70L, 30L, position = 0L, reps = 8L, weight = 60.0),
+            ),
+        )
+
+        val setUi = store.state.value.exercises.single().sets.single()
+        assertEquals(8L, setUi.previousReps)
+        assertEquals(60.0, setUi.previousWeight)
+    }
+
+    @Test
+    fun initialState_matchesPreviousSetsByPositionAcrossMultipleSets() {
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            sets = listOf(
+                workoutSet(50L, 10L, position = 0L),
+                workoutSet(51L, 10L, position = 1L),
+            ),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            otherWorkoutExercises = listOf(workoutExercise(20L, 2L, 100L, position = 0L)),
+            otherSets = listOf(
+                workoutSet(60L, 20L, position = 0L, reps = 8L, weight = 60.0),
+                workoutSet(61L, 20L, position = 1L, reps = 6L, weight = 65.0),
+            ),
+        )
+
+        val sets = store.state.value.exercises.single().sets
+        assertEquals(8L to 60.0, sets[0].previousReps to sets[0].previousWeight)
+        assertEquals(6L to 65.0, sets[1].previousReps to sets[1].previousWeight)
     }
 
     @Test
@@ -203,7 +293,7 @@ class ActiveWorkoutStoreTest {
 
         val sets = store.state.value.exercises.single().sets
         assertEquals(2, sets.size)
-        assertEquals(1L, sets[1].position)
+        assertEquals(1L, sets[1].set.position)
     }
 
     @Test
@@ -216,7 +306,7 @@ class ActiveWorkoutStoreTest {
 
         store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
 
-        assertTrue(store.state.value.exercises.single().sets.single().completed)
+        assertTrue(store.state.value.exercises.single().sets.single().set.completed)
     }
 
     @Test
@@ -229,7 +319,7 @@ class ActiveWorkoutStoreTest {
 
         store.onIntent(ActiveWorkoutIntent.UpdateReps(50L, "12"))
 
-        val set = store.state.value.exercises.single().sets.single()
+        val set = store.state.value.exercises.single().sets.single().set
         assertEquals(12L, set.reps)
         assertEquals(40.0, set.weight)
     }
@@ -244,7 +334,7 @@ class ActiveWorkoutStoreTest {
 
         store.onIntent(ActiveWorkoutIntent.UpdateWeight(50L, ""))
 
-        assertNull(store.state.value.exercises.single().sets.single().weight)
+        assertNull(store.state.value.exercises.single().sets.single().set.weight)
     }
 
     @Test
@@ -258,7 +348,7 @@ class ActiveWorkoutStoreTest {
         val seen = mutableListOf<SetType>()
         repeat(SetType.entries.size) {
             store.onIntent(ActiveWorkoutIntent.CycleSetType(50L))
-            seen += store.state.value.exercises.single().sets.single().setType
+            seen += store.state.value.exercises.single().sets.single().set.setType
         }
 
         assertEquals(SetType.entries.drop(1) + SetType.NORMAL, seen)

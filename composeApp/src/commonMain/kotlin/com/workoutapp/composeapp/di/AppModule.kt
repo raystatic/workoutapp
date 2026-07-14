@@ -20,6 +20,7 @@ import com.workoutapp.composeapp.data.routines.RoutineRepository
 import com.workoutapp.composeapp.data.routines.RoutineRepositoryImpl
 import com.workoutapp.composeapp.data.routines.RoutineSetRepository
 import com.workoutapp.composeapp.data.routines.RoutineSetRepositoryImpl
+import com.workoutapp.composeapp.data.workout.PreviousSetResolver
 import com.workoutapp.composeapp.data.workout.WorkoutExerciseRepository
 import com.workoutapp.composeapp.data.workout.WorkoutExerciseRepositoryImpl
 import com.workoutapp.composeapp.data.workout.WorkoutRepository
@@ -63,6 +64,7 @@ val appModule = module {
     single<BodyMeasurementRepository> { BodyMeasurementRepositoryImpl(get()) }
     single<PersonalRecordRepository> { PersonalRecordRepositoryImpl(get()) }
     single<UserProfileRepository> { UserProfileRepositoryImpl(get()) }
+    single { PreviousSetResolver(get(), get()) }
     single { WorkoutStore(get(), get()) }
-    factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get()) }
+    factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get(), get()) }
 }
