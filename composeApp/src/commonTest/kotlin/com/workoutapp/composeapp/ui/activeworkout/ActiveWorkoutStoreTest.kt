@@ -29,8 +29,13 @@ private fun workout(id: Long, startedAt: Long = 1_000L) =
 private fun exercise(id: Long, name: String) =
     Exercise(id, name, "Chest", emptyList(), "Barbell", null, false, null, null, 1_000L, "PENDING")
 
-private fun workoutExercise(id: Long, workoutId: Long, exerciseId: Long, position: Long) =
-    WorkoutExercise(id, workoutId, exerciseId, position, null, null, null, 1_000L, "PENDING")
+private fun workoutExercise(
+    id: Long,
+    workoutId: Long,
+    exerciseId: Long,
+    position: Long,
+    supersetGroup: String? = null,
+) = WorkoutExercise(id, workoutId, exerciseId, position, supersetGroup, null, null, 1_000L, "PENDING")
 
 private fun workoutSet(
     id: Long,
@@ -81,6 +86,10 @@ private class FakeWorkoutExerciseRepository(seed: List<WorkoutExercise>) : Worko
 
     override suspend fun updatePosition(id: Long, position: Long) {
         exercisesFlow.update { list -> list.map { if (it.id == id) it.copy(position = position) else it } }
+    }
+
+    override suspend fun updateSupersetGroup(id: Long, supersetGroup: String?) {
+        exercisesFlow.update { list -> list.map { if (it.id == id) it.copy(supersetGroup = supersetGroup) else it } }
     }
 
     override suspend fun delete(id: Long) {
@@ -437,5 +446,122 @@ class ActiveWorkoutStoreTest {
 
         val names = store.state.value.exercises.sortedBy { it.position }.map { it.exerciseName }
         assertEquals(listOf("Bench Press", "Squat"), names)
+    }
+
+    @Test
+    fun groupWithNextExercise_assignsMatchingSupersetGroupToBoth() = runTest {
+        val store = newStore(
+            workoutExercises = listOf(
+                workoutExercise(10L, 1L, 100L, position = 0L),
+                workoutExercise(20L, 1L, 200L, position = 1L),
+            ),
+            exercises = listOf(exercise(100L, "Bench Press"), exercise(200L, "Squat")),
+        )
+
+        store.onIntent(ActiveWorkoutIntent.GroupWithNextExercise(10L))
+
+        val exercises = store.state.value.exercises.sortedBy { it.position }
+        val groupA = exercises[0].supersetGroup
+        assertEquals(groupA, exercises[1].supersetGroup)
+        assertEquals("A", exercises[0].supersetLabel)
+        assertEquals("A", exercises[1].supersetLabel)
+    }
+
+    @Test
+    fun groupWithNextExercise_atLastExercise_doesNothing() = runTest {
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+        )
+
+        store.onIntent(ActiveWorkoutIntent.GroupWithNextExercise(10L))
+
+        assertNull(store.state.value.exercises.single().supersetGroup)
+    }
+
+    @Test
+    fun groupWithNextExercise_extendsAnExistingGroup() = runTest {
+        val store = newStore(
+            workoutExercises = listOf(
+                workoutExercise(10L, 1L, 100L, position = 0L, supersetGroup = "sg-10"),
+                workoutExercise(20L, 1L, 200L, position = 1L, supersetGroup = "sg-10"),
+                workoutExercise(30L, 1L, 300L, position = 2L),
+            ),
+            exercises = listOf(exercise(100L, "Bench Press"), exercise(200L, "Squat"), exercise(300L, "Row")),
+        )
+
+        store.onIntent(ActiveWorkoutIntent.GroupWithNextExercise(20L))
+
+        val exercises = store.state.value.exercises.sortedBy { it.position }
+        assertEquals("sg-10", exercises[2].supersetGroup)
+        assertEquals(setOf("A"), exercises.mapNotNull { it.supersetLabel }.toSet())
+    }
+
+    @Test
+    fun removeFromSuperset_clearsGroupOnBothMembersOfAPair() = runTest {
+        val store = newStore(
+            workoutExercises = listOf(
+                workoutExercise(10L, 1L, 100L, position = 0L, supersetGroup = "sg-10"),
+                workoutExercise(20L, 1L, 200L, position = 1L, supersetGroup = "sg-10"),
+            ),
+            exercises = listOf(exercise(100L, "Bench Press"), exercise(200L, "Squat")),
+        )
+
+        store.onIntent(ActiveWorkoutIntent.RemoveFromSuperset(10L))
+
+        val exercises = store.state.value.exercises
+        assertTrue(exercises.all { it.supersetGroup == null })
+        assertTrue(exercises.all { it.supersetLabel == null })
+    }
+
+    @Test
+    fun removeFromSuperset_withThreeMembers_leavesTheOtherTwoGrouped() = runTest {
+        val store = newStore(
+            workoutExercises = listOf(
+                workoutExercise(10L, 1L, 100L, position = 0L, supersetGroup = "sg-10"),
+                workoutExercise(20L, 1L, 200L, position = 1L, supersetGroup = "sg-10"),
+                workoutExercise(30L, 1L, 300L, position = 2L, supersetGroup = "sg-10"),
+            ),
+            exercises = listOf(exercise(100L, "Bench Press"), exercise(200L, "Squat"), exercise(300L, "Row")),
+        )
+
+        store.onIntent(ActiveWorkoutIntent.RemoveFromSuperset(10L))
+
+        val exercises = store.state.value.exercises.sortedBy { it.position }
+        assertNull(exercises[0].supersetGroup)
+        assertEquals("sg-10", exercises[1].supersetGroup)
+        assertEquals("sg-10", exercises[2].supersetGroup)
+    }
+
+    @Test
+    fun supersetLogging_upNextExerciseAlternatesAsSetsComplete() = runTest {
+        val store = newStore(
+            workoutExercises = listOf(
+                workoutExercise(10L, 1L, 100L, position = 0L, supersetGroup = "sg-10"),
+                workoutExercise(20L, 1L, 200L, position = 1L, supersetGroup = "sg-10"),
+            ),
+            sets = listOf(
+                workoutSet(50L, 10L, position = 0L),
+                workoutSet(51L, 10L, position = 1L),
+                workoutSet(60L, 20L, position = 0L),
+                workoutSet(61L, 20L, position = 1L),
+            ),
+            exercises = listOf(exercise(100L, "Bench Press"), exercise(200L, "Squat")),
+        )
+        fun upNextName() = store.state.value.exercises.single { it.isUpNextInSuperset }.exerciseName
+
+        assertEquals("Bench Press", upNextName())
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
+        assertEquals("Squat", upNextName())
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(60L))
+        assertEquals("Bench Press", upNextName())
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(51L))
+        assertEquals("Squat", upNextName())
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(61L))
+        assertTrue(store.state.value.exercises.none { it.isUpNextInSuperset })
     }
 }

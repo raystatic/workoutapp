@@ -32,5 +32,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?);
 updatePosition:
 UPDATE workoutExercise SET position = ? WHERE id = ?;
 
+updateSupersetGroup:
+UPDATE workoutExercise SET supersetGroup = ? WHERE id = ?;
+
 deleteById:
 DELETE FROM workoutExercise WHERE id = ?;
