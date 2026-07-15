@@ -28,6 +28,16 @@ ORDER BY workoutSet.position ASC;
 selectById:
 SELECT * FROM workoutSet WHERE id = ?;
 
+-- Completed sets for one exercise across every workout, most-recent workout first — backs the
+-- exercise detail screen's history (#21).
+selectHistoryByExerciseId:
+SELECT workoutSet.*, workout.startedAt AS workoutStartedAt
+FROM workoutSet
+JOIN workoutExercise ON workoutSet.workoutExerciseId = workoutExercise.id
+JOIN workout ON workoutExercise.workoutId = workout.id
+WHERE workoutExercise.exerciseId = ? AND workoutSet.completed = 1
+ORDER BY workout.startedAt DESC, workoutSet.position ASC;
+
 insert:
 INSERT INTO workoutSet(workoutExerciseId, position, reps, weight, durationSec, setType, completed, rpe, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);

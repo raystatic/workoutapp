@@ -8,12 +8,19 @@ import com.workoutapp.composeapp.db.WorkoutSet
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withContext
+
+/** One completed set from [WorkoutSetRepository.observeHistoryByExerciseId], paired with the date it was logged on. */
+data class ExerciseSetHistoryEntry(val set: WorkoutSet, val workoutStartedAt: Long)
 
 interface WorkoutSetRepository {
     fun observeByWorkoutExerciseId(workoutExerciseId: Long): Flow<List<WorkoutSet>>
 
     fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutSet>>
+
+    /** Completed sets for [exerciseId] across every workout, most-recent workout first. */
+    fun observeHistoryByExerciseId(exerciseId: Long): Flow<List<ExerciseSetHistoryEntry>>
 
     /** One-shot fetch of a workout exercise's sets, ordered by position. */
     suspend fun getByWorkoutExerciseId(workoutExerciseId: Long): List<WorkoutSet>
@@ -58,6 +65,29 @@ class WorkoutSetRepositoryImpl(
 
     override fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutSet>> =
         queries.selectByWorkoutId(workoutId).asFlow().mapToList(ioDispatcher)
+
+    override fun observeHistoryByExerciseId(exerciseId: Long): Flow<List<ExerciseSetHistoryEntry>> =
+        queries.selectHistoryByExerciseId(exerciseId).asFlow().mapToList(ioDispatcher).map { rows ->
+            rows.map { row ->
+                ExerciseSetHistoryEntry(
+                    set = WorkoutSet(
+                        id = row.id,
+                        workoutExerciseId = row.workoutExerciseId,
+                        position = row.position,
+                        reps = row.reps,
+                        weight = row.weight,
+                        durationSec = row.durationSec,
+                        setType = row.setType,
+                        completed = row.completed,
+                        rpe = row.rpe,
+                        serverId = row.serverId,
+                        updatedAt = row.updatedAt,
+                        syncStatus = row.syncStatus,
+                    ),
+                    workoutStartedAt = row.workoutStartedAt,
+                )
+            }
+        }
 
     override suspend fun getByWorkoutExerciseId(workoutExerciseId: Long): List<WorkoutSet> =
         withContext(ioDispatcher) {

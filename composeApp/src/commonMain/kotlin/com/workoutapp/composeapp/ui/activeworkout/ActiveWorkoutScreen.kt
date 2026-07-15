@@ -70,6 +70,7 @@ fun ActiveWorkoutScreen(
     workoutId: Long,
     onBack: () -> Unit = {},
     onFinish: (Long) -> Unit = {},
+    onOpenExerciseDetail: (Long) -> Unit = {},
     store: ActiveWorkoutStore = koinInject { parametersOf(workoutId) },
     restTimerStore: RestTimerStore = koinInject(),
 ) {
@@ -124,6 +125,7 @@ fun ActiveWorkoutScreen(
                         isLast = index == state.exercises.lastIndex,
                         canGroupWithNext = index != state.exercises.lastIndex,
                         onIntent = store::onIntent,
+                        onOpenExerciseDetail = onOpenExerciseDetail,
                     )
                 }
                 item {
@@ -146,6 +148,7 @@ fun ActiveWorkoutScreen(
             onConfirm = { store.onIntent(ActiveWorkoutIntent.AddExercises(it)) },
             onDismiss = { store.onIntent(ActiveWorkoutIntent.HideAddExercise) },
             testTagPrefix = "add_exercise",
+            onOpenDetail = onOpenExerciseDetail,
         )
     }
 }
@@ -196,6 +199,7 @@ private fun ExerciseCard(
     isLast: Boolean,
     canGroupWithNext: Boolean,
     onIntent: (ActiveWorkoutIntent) -> Unit,
+    onOpenExerciseDetail: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val spacing = LocalSpacing.current
@@ -244,7 +248,9 @@ private fun ExerciseCard(
                 Text(
                     text = exercise.exerciseName,
                     style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.testTag("exercise_name_${exercise.workoutExerciseId}"),
+                    modifier = Modifier
+                        .testTag("exercise_name_${exercise.workoutExerciseId}")
+                        .clickable { onOpenExerciseDetail(exercise.exerciseId) },
                 )
                 AssistChip(
                     onClick = { onIntent(ActiveWorkoutIntent.CycleRestOverride(exercise.workoutExerciseId)) },

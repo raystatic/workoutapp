@@ -56,6 +56,7 @@ import com.workoutapp.composeapp.ui.designsystem.components.SetType as UiSetType
 fun RoutineBuilderScreen(
     routineId: Long,
     onDone: () -> Unit = {},
+    onOpenExerciseDetail: (Long) -> Unit = {},
     store: RoutineBuilderStore = koinInject { parametersOf(routineId) },
 ) {
     val state by store.state.collectAsState()
@@ -125,6 +126,7 @@ fun RoutineBuilderScreen(
             onConfirm = { store.onIntent(RoutineBuilderIntent.AddExercises(it)) },
             onDismiss = { store.onIntent(RoutineBuilderIntent.HideAddExercise) },
             testTagPrefix = "routine_add_exercise",
+            onOpenDetail = onOpenExerciseDetail,
         )
     }
 }

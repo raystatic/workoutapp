@@ -186,6 +186,64 @@ class WorkoutSetRepositoryTest {
     }
 
     @Test
+    fun observeHistoryByExerciseId_returnsOnlyCompletedSetsNewestWorkoutFirst() = runTest {
+        val exerciseId = database.exerciseQueries.selectAll().executeAsList().single().id
+
+        repository.add(workoutExerciseId = workoutExerciseId, position = 0, reps = 10, weight = 80.0, updatedAt = 1000L)
+        val incompleteId = repository.observeByWorkoutExerciseId(workoutExerciseId).first().single().id
+        repository.update(
+            id = incompleteId,
+            reps = 10,
+            weight = 80.0,
+            durationSec = null,
+            setType = SetType.NORMAL,
+            completed = true,
+            updatedAt = 1000L,
+        )
+        repository.add(workoutExerciseId = workoutExerciseId, position = 1, reps = 8, weight = 60.0, updatedAt = 1000L)
+
+        database.workoutQueries.insert(
+            name = "Later Session",
+            startedAt = 2000L,
+            finishedAt = null,
+            note = null,
+            privacy = WorkoutPrivacy.PRIVATE,
+            media = emptyList(),
+            serverId = null,
+            updatedAt = 2000L,
+            syncStatus = "PENDING",
+        )
+        val laterWorkoutId = database.workoutQueries.selectAll().executeAsList().single { it.name == "Later Session" }.id
+        database.workoutExerciseQueries.insert(
+            workoutId = laterWorkoutId,
+            exerciseId = exerciseId,
+            position = 0,
+            supersetGroup = null,
+            notes = null,
+            serverId = null,
+            updatedAt = 2000L,
+            syncStatus = "PENDING",
+        )
+        val laterWorkoutExerciseId = database.workoutExerciseQueries.selectByWorkoutId(laterWorkoutId).executeAsList().single().id
+        repository.add(workoutExerciseId = laterWorkoutExerciseId, position = 0, reps = 5, weight = 100.0, updatedAt = 2000L)
+        val laterSetId = repository.observeByWorkoutExerciseId(laterWorkoutExerciseId).first().single().id
+        repository.update(
+            id = laterSetId,
+            reps = 5,
+            weight = 100.0,
+            durationSec = null,
+            setType = SetType.NORMAL,
+            completed = true,
+            updatedAt = 2000L,
+        )
+
+        val history = repository.observeHistoryByExerciseId(exerciseId).first()
+
+        assertEquals(listOf(100.0, 80.0), history.map { it.set.weight })
+        assertEquals(listOf(2000L, 1000L), history.map { it.workoutStartedAt })
+    }
+
+    @Test
     fun delete_removesTheSet() = runTest {
         repository.add(workoutExerciseId = workoutExerciseId, position = 0, updatedAt = 1000L)
         val idToDelete = repository.observeByWorkoutExerciseId(workoutExerciseId).first().single().id

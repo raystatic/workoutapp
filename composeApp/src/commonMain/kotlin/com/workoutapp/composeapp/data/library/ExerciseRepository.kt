@@ -2,6 +2,7 @@ package com.workoutapp.composeapp.data.library
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.workoutapp.composeapp.db.AppDatabase
 import com.workoutapp.composeapp.db.Exercise
 import kotlinx.coroutines.CoroutineDispatcher
@@ -11,6 +12,9 @@ import kotlinx.coroutines.withContext
 
 interface ExerciseRepository {
     fun observeAll(): Flow<List<Exercise>>
+
+    /** A single exercise by id, or `null` if it doesn't exist (e.g. deleted). */
+    fun observeById(id: Long): Flow<Exercise?>
 
     /** Distinct exercises used in any workout, most-recently-used first, capped at [limit]. */
     fun observeRecentlyUsed(limit: Int): Flow<List<Exercise>>
@@ -37,6 +41,9 @@ class ExerciseRepositoryImpl(
 
     override fun observeAll(): Flow<List<Exercise>> =
         queries.selectAll().asFlow().mapToList(ioDispatcher)
+
+    override fun observeById(id: Long): Flow<Exercise?> =
+        queries.selectById(id).asFlow().mapToOneOrNull(ioDispatcher)
 
     override fun observeRecentlyUsed(limit: Int): Flow<List<Exercise>> =
         queries.selectRecentlyUsed(limit.toLong()).asFlow().mapToList(ioDispatcher)

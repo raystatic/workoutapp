@@ -35,6 +35,7 @@ import com.workoutapp.composeapp.db.RoutineSet
 import com.workoutapp.composeapp.db.Workout
 import com.workoutapp.composeapp.db.WorkoutSet
 import com.workoutapp.composeapp.ui.activeworkout.ActiveWorkoutStore
+import com.workoutapp.composeapp.ui.exercisedetail.ExerciseDetailStore
 import com.workoutapp.composeapp.ui.finishworkout.FinishWorkoutStore
 import com.workoutapp.composeapp.ui.resttimer.RestTimerController
 import com.workoutapp.composeapp.ui.resttimer.RestTimerStore
@@ -78,4 +79,5 @@ val appModule = module {
     factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get()) }
     factory { (workoutId: Long) -> FinishWorkoutStore(workoutId, get(), get(), get(), get(), get(), get()) }
     factory { (routineId: Long) -> RoutineBuilderStore(routineId, get(), get(), get(), get()) }
+    factory { (exerciseId: Long) -> ExerciseDetailStore(exerciseId, get(), get()) }
 }

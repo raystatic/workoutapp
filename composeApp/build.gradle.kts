@@ -43,6 +43,7 @@ kotlin {
             implementation(libs.sqldelight.runtime)
             implementation(libs.sqldelight.coroutines)
             implementation(libs.navigation.compose)
+            implementation(libs.coil.compose)
         }
         commonTest.dependencies {
             implementation(kotlin("test"))
