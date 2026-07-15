@@ -18,6 +18,7 @@ import com.workoutapp.composeapp.ui.designsystem.catalog.ComponentCatalogScreen
 import com.workoutapp.composeapp.ui.designsystem.components.AppBottomTabBar
 import com.workoutapp.composeapp.ui.designsystem.components.BottomTabItem
 import com.workoutapp.composeapp.ui.designsystem.theme.WorkoutAppTheme
+import com.workoutapp.composeapp.ui.exercisedetail.ExerciseDetailScreen
 import com.workoutapp.composeapp.ui.finishworkout.FinishWorkoutScreen
 import com.workoutapp.composeapp.ui.profile.ProfileScreen
 import com.workoutapp.composeapp.ui.routinebuilder.RoutineBuilderScreen
@@ -93,6 +94,7 @@ fun App() {
                         workoutId = workoutId,
                         onBack = { navController.popBackStack() },
                         onFinish = { navController.navigate(AppDestination.FinishWorkout.route(it)) },
+                        onOpenExerciseDetail = { navController.navigate(AppDestination.ExerciseDetail.route(it)) },
                     )
                 }
                 composable(
@@ -114,6 +116,17 @@ fun App() {
                     RoutineBuilderScreen(
                         routineId = routineId,
                         onDone = { navController.popBackStack() },
+                        onOpenExerciseDetail = { navController.navigate(AppDestination.ExerciseDetail.route(it)) },
+                    )
+                }
+                composable(
+                    route = AppDestination.ExerciseDetail.route,
+                    arguments = listOf(navArgument("exerciseId") { type = NavType.LongType }),
+                ) { backStackEntry ->
+                    val exerciseId = backStackEntry.arguments?.read { getLong("exerciseId") } ?: 0L
+                    ExerciseDetailScreen(
+                        exerciseId = exerciseId,
+                        onBack = { navController.popBackStack() },
                     )
                 }
             }

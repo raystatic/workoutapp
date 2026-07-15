@@ -57,6 +57,21 @@ class ExerciseRepositoryTest {
     }
 
     @Test
+    fun observeById_returnsTheMatchingExercise() = runTest {
+        repository.add(name = "Squat", primaryMuscle = "Legs", equipment = "Barbell", updatedAt = 1000L)
+        val id = repository.observeAll().first().single().id
+
+        val exercise = repository.observeById(id).first()
+
+        assertEquals("Squat", exercise?.name)
+    }
+
+    @Test
+    fun observeById_unknownId_returnsNull() = runTest {
+        assertEquals(null, repository.observeById(999L).first())
+    }
+
+    @Test
     fun delete_removesOnlyTheMatchingExercise() = runTest {
         repository.add(name = "Squat", primaryMuscle = "Legs", equipment = "Barbell", updatedAt = 1000L)
         val idToDelete = repository.observeAll().first().single().id

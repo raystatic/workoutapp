@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Checkbox
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -38,7 +39,8 @@ import com.workoutapp.composeapp.ui.designsystem.theme.LocalSpacing
  * "+ Add Exercise" flow (#20): searchable by name, filterable by equipment/muscle (combined
  * with AND), a "Recent" shortcut for quickly re-adding recently-logged exercises, and
  * multi-select — [onConfirm] fires once with every selected exercise id when the caller taps
- * "Add".
+ * "Add". Each row also has an info affordance that fires [onOpenDetail] with the exercise id
+ * without affecting selection (#21).
  */
 @Composable
 fun ExerciseLibraryPicker(
@@ -48,6 +50,7 @@ fun ExerciseLibraryPicker(
     modifier: Modifier = Modifier,
     recentExercises: List<Exercise> = emptyList(),
     testTagPrefix: String = "exercise_library",
+    onOpenDetail: (Long) -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     var equipmentFilter by remember { mutableStateOf<String?>(null) }
@@ -170,11 +173,17 @@ fun ExerciseLibraryPicker(
                                 title = exercise.name,
                                 subtitle = exercise.primaryMuscle,
                                 trailing = {
-                                    Checkbox(
-                                        checked = isSelected,
-                                        onCheckedChange = { toggleSelection(exercise.id) },
-                                        modifier = Modifier.testTag("${testTagPrefix}_checkbox_${exercise.id}"),
-                                    )
+                                    Row {
+                                        IconButton(
+                                            onClick = { onOpenDetail(exercise.id) },
+                                            modifier = Modifier.testTag("${testTagPrefix}_info_${exercise.id}"),
+                                        ) { Text("ⓘ") }
+                                        Checkbox(
+                                            checked = isSelected,
+                                            onCheckedChange = { toggleSelection(exercise.id) },
+                                            modifier = Modifier.testTag("${testTagPrefix}_checkbox_${exercise.id}"),
+                                        )
+                                    }
                                 },
                                 modifier = Modifier
                                     .testTag("${testTagPrefix}_option_${exercise.id}")

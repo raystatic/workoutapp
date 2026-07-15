@@ -30,6 +30,11 @@ sealed class AppDestination(val route: String, val label: String) {
         fun route(routineId: Long): String = "routine_builder/$routineId"
     }
 
+    /** Pushed from the exercise library picker or from an exercise's name mid-workout (#21). */
+    data object ExerciseDetail : AppDestination("exercise_detail/{exerciseId}", "Exercise Detail") {
+        fun route(exerciseId: Long): String = "exercise_detail/$exerciseId"
+    }
+
     companion object {
         val bottomTabs: List<AppDestination> = listOf(Workout, Profile)
     }
