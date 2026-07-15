@@ -48,6 +48,7 @@ import com.workoutapp.composeapp.ui.designsystem.components.SecondaryButton
 import com.workoutapp.composeapp.ui.designsystem.components.SetTypeIndicator
 import com.workoutapp.composeapp.ui.designsystem.theme.LocalSpacing
 import com.workoutapp.composeapp.ui.library.ExerciseLibraryPicker
+import com.workoutapp.composeapp.ui.plates.PlateCalculatorDialog
 import com.workoutapp.composeapp.ui.resttimer.RestTimerIntent
 import com.workoutapp.composeapp.ui.resttimer.RestTimerState
 import com.workoutapp.composeapp.ui.resttimer.RestTimerStore
@@ -324,6 +325,7 @@ private fun ExerciseCard(
 private fun SetRow(setUi: ActiveWorkoutSetUi, onIntent: (ActiveWorkoutIntent) -> Unit, modifier: Modifier = Modifier) {
     val spacing = LocalSpacing.current
     val set = setUi.set
+    var showCalculator by remember { mutableStateOf(false) }
     val dismissState = rememberSwipeToDismissBoxState(
         confirmValueChange = { value ->
             if (value != SwipeToDismissBoxValue.Settled) {
@@ -395,11 +397,26 @@ private fun SetRow(setUi: ActiveWorkoutSetUi, onIntent: (ActiveWorkoutIntent) ->
                     modifier = Modifier.testTag("set_complete_${set.id}"),
                 )
                 IconButton(
+                    onClick = { showCalculator = true },
+                    modifier = Modifier.testTag("calculator_${set.id}"),
+                ) { Text("🧮") }
+                IconButton(
                     onClick = { onIntent(ActiveWorkoutIntent.RemoveSet(set.id)) },
                     modifier = Modifier.testTag("remove_set_${set.id}"),
                 ) { Text("✕") }
             }
         }
+    }
+
+    if (showCalculator) {
+        PlateCalculatorDialog(
+            initialWeight = set.weight,
+            onApplyWeight = { weight ->
+                onIntent(ActiveWorkoutIntent.UpdateWeight(set.id, formatNumber(weight)))
+                showCalculator = false
+            },
+            onDismiss = { showCalculator = false },
+        )
     }
 }
 
