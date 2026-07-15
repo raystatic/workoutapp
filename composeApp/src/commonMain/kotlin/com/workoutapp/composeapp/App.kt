@@ -18,6 +18,7 @@ import com.workoutapp.composeapp.ui.designsystem.catalog.ComponentCatalogScreen
 import com.workoutapp.composeapp.ui.designsystem.components.AppBottomTabBar
 import com.workoutapp.composeapp.ui.designsystem.components.BottomTabItem
 import com.workoutapp.composeapp.ui.designsystem.theme.WorkoutAppTheme
+import com.workoutapp.composeapp.ui.customexercise.AddCustomExerciseScreen
 import com.workoutapp.composeapp.ui.exercisedetail.ExerciseDetailScreen
 import com.workoutapp.composeapp.ui.finishworkout.FinishWorkoutScreen
 import com.workoutapp.composeapp.ui.profile.ProfileScreen
@@ -95,6 +96,7 @@ fun App() {
                         onBack = { navController.popBackStack() },
                         onFinish = { navController.navigate(AppDestination.FinishWorkout.route(it)) },
                         onOpenExerciseDetail = { navController.navigate(AppDestination.ExerciseDetail.route(it)) },
+                        onAddCustomExercise = { navController.navigate(AppDestination.AddCustomExercise.route) },
                     )
                 }
                 composable(
@@ -117,6 +119,7 @@ fun App() {
                         routineId = routineId,
                         onDone = { navController.popBackStack() },
                         onOpenExerciseDetail = { navController.navigate(AppDestination.ExerciseDetail.route(it)) },
+                        onAddCustomExercise = { navController.navigate(AppDestination.AddCustomExercise.route) },
                     )
                 }
                 composable(
@@ -128,6 +131,9 @@ fun App() {
                         exerciseId = exerciseId,
                         onBack = { navController.popBackStack() },
                     )
+                }
+                composable(AppDestination.AddCustomExercise.route) {
+                    AddCustomExerciseScreen(onDone = { navController.popBackStack() })
                 }
             }
         }

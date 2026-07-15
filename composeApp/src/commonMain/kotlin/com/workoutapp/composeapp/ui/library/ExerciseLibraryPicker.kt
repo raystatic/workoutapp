@@ -40,7 +40,8 @@ import com.workoutapp.composeapp.ui.designsystem.theme.LocalSpacing
  * with AND), a "Recent" shortcut for quickly re-adding recently-logged exercises, and
  * multi-select — [onConfirm] fires once with every selected exercise id when the caller taps
  * "Add". Each row also has an info affordance that fires [onOpenDetail] with the exercise id
- * without affecting selection (#21).
+ * without affecting selection (#21). [onAddCustomExercise] opens the "Add Custom Exercise" flow
+ * for a lifter who can't find a niche/rehab movement in the seeded catalog (#22).
  */
 @Composable
 fun ExerciseLibraryPicker(
@@ -51,6 +52,7 @@ fun ExerciseLibraryPicker(
     recentExercises: List<Exercise> = emptyList(),
     testTagPrefix: String = "exercise_library",
     onOpenDetail: (Long) -> Unit = {},
+    onAddCustomExercise: () -> Unit = {},
 ) {
     var query by remember { mutableStateOf("") }
     var equipmentFilter by remember { mutableStateOf<String?>(null) }
@@ -137,6 +139,12 @@ fun ExerciseLibraryPicker(
                     }
                 }
             }
+
+            SecondaryButton(
+                text = "Can't find it? Add custom exercise",
+                onClick = onAddCustomExercise,
+                modifier = Modifier.padding(top = spacing.xs).testTag("${testTagPrefix}_add_custom_exercise_link"),
+            )
 
             if (showRecent) {
                 Text(

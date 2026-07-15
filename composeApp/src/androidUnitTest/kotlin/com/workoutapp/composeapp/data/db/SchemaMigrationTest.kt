@@ -129,3 +129,63 @@ class RestTimerSchemaMigrationTest {
         assertEquals("120", database.appSettingQueries.selectByKey("default_rest_seconds").executeAsOne())
     }
 }
+
+/**
+ * Seeds a driver with the pre-migration (v3) `exercise` table — the schema before 4.sqm added
+ * `type` (#22, custom exercises) — inserts a row, then migrates to v4 and verifies the row
+ * survives untouched and the new column is queryable.
+ */
+class CustomExerciseTypeSchemaMigrationTest {
+    private lateinit var driver: JdbcSqliteDriver
+
+    @Before
+    fun setUp() {
+        driver = JdbcSqliteDriver(JdbcSqliteDriver.IN_MEMORY)
+        driver.execute(
+            null,
+            """
+            CREATE TABLE exercise (
+                id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+                name TEXT NOT NULL,
+                primaryMuscle TEXT NOT NULL,
+                secondaryMuscles TEXT NOT NULL DEFAULT '',
+                equipment TEXT NOT NULL,
+                mediaUrl TEXT,
+                isCustom INTEGER NOT NULL DEFAULT 0,
+                instructions TEXT,
+                serverId TEXT,
+                updatedAt INTEGER NOT NULL,
+                syncStatus TEXT NOT NULL DEFAULT 'PENDING'
+            )
+            """.trimIndent(),
+            0,
+        )
+        driver.execute(
+            null,
+            """
+            INSERT INTO exercise(name, primaryMuscle, equipment, isCustom, updatedAt, syncStatus)
+            VALUES ('Bench Press', 'Chest', 'Barbell', 0, 1000, 'PENDING')
+            """.trimIndent(),
+            0,
+        )
+    }
+
+    @After
+    fun tearDown() {
+        driver.close()
+    }
+
+    @Test
+    fun migrateV3ToV4_addsTypeColumn_withoutLosingExistingRows() {
+        AppDatabase.Schema.migrate(driver, 3, 4)
+
+        val database = testAppDatabase(driver)
+        val rows = database.exerciseQueries.selectAll().executeAsList()
+
+        assertEquals(1, rows.size)
+        val row = rows.single()
+        assertEquals("Bench Press", row.name)
+        assertEquals("PENDING", row.syncStatus)
+        assertNull(row.type)
+    }
+}

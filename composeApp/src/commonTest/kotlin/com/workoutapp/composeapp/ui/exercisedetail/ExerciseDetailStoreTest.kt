@@ -23,7 +23,7 @@ private fun exercise(
     equipment: String = "Barbell",
     mediaUrl: String? = null,
     instructions: String? = "Lie back and press.",
-) = Exercise(id, name, primaryMuscle, secondaryMuscles, equipment, mediaUrl, false, instructions, null, 1_000L, "PENDING")
+) = Exercise(id, name, primaryMuscle, secondaryMuscles, equipment, mediaUrl, false, instructions, null, 1_000L, "PENDING", null)
 
 private fun historyEntry(id: Long, workoutStartedAt: Long, weight: Double? = null, reps: Long? = null) =
     ExerciseSetHistoryEntry(

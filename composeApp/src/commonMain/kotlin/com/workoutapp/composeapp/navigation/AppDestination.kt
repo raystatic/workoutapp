@@ -35,6 +35,9 @@ sealed class AppDestination(val route: String, val label: String) {
         fun route(exerciseId: Long): String = "exercise_detail/$exerciseId"
     }
 
+    /** Pushed from the exercise library picker when a lifter can't find a movement (#22). */
+    data object AddCustomExercise : AppDestination("add_custom_exercise", "Add Custom Exercise")
+
     companion object {
         val bottomTabs: List<AppDestination> = listOf(Workout, Profile)
     }

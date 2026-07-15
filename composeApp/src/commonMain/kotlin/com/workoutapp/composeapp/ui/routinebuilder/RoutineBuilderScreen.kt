@@ -57,6 +57,7 @@ fun RoutineBuilderScreen(
     routineId: Long,
     onDone: () -> Unit = {},
     onOpenExerciseDetail: (Long) -> Unit = {},
+    onAddCustomExercise: () -> Unit = {},
     store: RoutineBuilderStore = koinInject { parametersOf(routineId) },
 ) {
     val state by store.state.collectAsState()
@@ -127,6 +128,7 @@ fun RoutineBuilderScreen(
             onDismiss = { store.onIntent(RoutineBuilderIntent.HideAddExercise) },
             testTagPrefix = "routine_add_exercise",
             onOpenDetail = onOpenExerciseDetail,
+            onAddCustomExercise = onAddCustomExercise,
         )
     }
 }

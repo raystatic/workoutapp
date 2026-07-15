@@ -11,7 +11,8 @@ CREATE TABLE exercise (
     instructions TEXT,
     serverId TEXT,
     updatedAt INTEGER NOT NULL,
-    syncStatus TEXT NOT NULL DEFAULT 'PENDING'
+    syncStatus TEXT NOT NULL DEFAULT 'PENDING',
+    type TEXT
 );
 
 selectAll:
@@ -21,11 +22,14 @@ selectById:
 SELECT * FROM exercise WHERE id = ?;
 
 insert:
-INSERT INTO exercise(name, primaryMuscle, secondaryMuscles, equipment, mediaUrl, isCustom, instructions, serverId, updatedAt, syncStatus)
-VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+INSERT INTO exercise(name, primaryMuscle, secondaryMuscles, equipment, mediaUrl, isCustom, instructions, serverId, updatedAt, syncStatus, type)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteById:
 DELETE FROM exercise WHERE id = ?;
+
+countCustom:
+SELECT COUNT(*) FROM exercise WHERE isCustom = 1;
 
 -- Distinct exercises used in any workout, most-recently-used first — backs the
 -- exercise picker's "Recent" shortcut (#20).

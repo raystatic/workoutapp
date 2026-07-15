@@ -71,6 +71,7 @@ fun ActiveWorkoutScreen(
     onBack: () -> Unit = {},
     onFinish: (Long) -> Unit = {},
     onOpenExerciseDetail: (Long) -> Unit = {},
+    onAddCustomExercise: () -> Unit = {},
     store: ActiveWorkoutStore = koinInject { parametersOf(workoutId) },
     restTimerStore: RestTimerStore = koinInject(),
 ) {
@@ -149,6 +150,7 @@ fun ActiveWorkoutScreen(
             onDismiss = { store.onIntent(ActiveWorkoutIntent.HideAddExercise) },
             testTagPrefix = "add_exercise",
             onOpenDetail = onOpenExerciseDetail,
+            onAddCustomExercise = onAddCustomExercise,
         )
     }
 }

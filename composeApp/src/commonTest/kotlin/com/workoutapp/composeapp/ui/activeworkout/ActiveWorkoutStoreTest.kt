@@ -29,7 +29,7 @@ private fun workout(id: Long, startedAt: Long = 1_000L) =
     Workout(id, "Workout", startedAt, null, null, WorkoutPrivacy.PRIVATE, emptyList(), null, startedAt, "PENDING")
 
 private fun exercise(id: Long, name: String) =
-    Exercise(id, name, "Chest", emptyList(), "Barbell", null, false, null, null, 1_000L, "PENDING")
+    Exercise(id, name, "Chest", emptyList(), "Barbell", null, false, null, null, 1_000L, "PENDING", null)
 
 private fun workoutExercise(
     id: Long,
