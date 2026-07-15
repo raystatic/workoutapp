@@ -23,5 +23,20 @@ insert:
 INSERT INTO routineExercise(routineId, exerciseId, position, supersetGroup, restSeconds, notes, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?);
 
+updatePosition:
+UPDATE routineExercise SET position = ? WHERE id = ?;
+
+updateSupersetGroup:
+UPDATE routineExercise SET supersetGroup = ? WHERE id = ?;
+
+updateRestSeconds:
+UPDATE routineExercise SET restSeconds = ? WHERE id = ?;
+
+updateNotes:
+UPDATE routineExercise SET notes = ? WHERE id = ?;
+
+lastInsertRowId:
+SELECT last_insert_rowid();
+
 deleteById:
 DELETE FROM routineExercise WHERE id = ?;

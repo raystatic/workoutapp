@@ -83,9 +83,11 @@ private class FakeWorkoutExerciseRepository(seed: List<WorkoutExercise>) : Worko
         restSeconds: Long?,
         notes: String?,
         updatedAt: Long,
-    ) {
+    ): Long {
         added += workoutId to exerciseId
-        exercisesFlow.update { it + workoutExercise(nextId++, workoutId, exerciseId, position, restSeconds = restSeconds) }
+        val newId = nextId++
+        exercisesFlow.update { it + workoutExercise(newId, workoutId, exerciseId, position, restSeconds = restSeconds) }
+        return newId
     }
 
     override suspend fun updatePosition(id: Long, position: Long) {

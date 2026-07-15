@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 interface RoutineExerciseRepository {
     fun observeByRoutineId(routineId: Long): Flow<List<RoutineExercise>>
 
+    /** Inserts the routine exercise and returns its generated [RoutineExercise.id]. */
     suspend fun add(
         routineId: Long,
         exerciseId: Long,
@@ -20,7 +21,15 @@ interface RoutineExerciseRepository {
         restSeconds: Long? = null,
         notes: String? = null,
         updatedAt: Long,
-    )
+    ): Long
+
+    suspend fun updatePosition(id: Long, position: Long)
+
+    suspend fun updateSupersetGroup(id: Long, supersetGroup: String?)
+
+    suspend fun updateRestSeconds(id: Long, restSeconds: Long?)
+
+    suspend fun updateNotes(id: Long, notes: String?)
 
     suspend fun delete(id: Long)
 }
@@ -42,18 +51,37 @@ class RoutineExerciseRepositoryImpl(
         restSeconds: Long?,
         notes: String?,
         updatedAt: Long,
-    ) = withContext(ioDispatcher) {
-        queries.insert(
-            routineId = routineId,
-            exerciseId = exerciseId,
-            position = position,
-            supersetGroup = supersetGroup,
-            restSeconds = restSeconds,
-            notes = notes,
-            serverId = null,
-            updatedAt = updatedAt,
-            syncStatus = "PENDING",
-        )
+    ): Long = withContext(ioDispatcher) {
+        queries.transactionWithResult {
+            queries.insert(
+                routineId = routineId,
+                exerciseId = exerciseId,
+                position = position,
+                supersetGroup = supersetGroup,
+                restSeconds = restSeconds,
+                notes = notes,
+                serverId = null,
+                updatedAt = updatedAt,
+                syncStatus = "PENDING",
+            )
+            queries.lastInsertRowId().executeAsOne()
+        }
+    }
+
+    override suspend fun updatePosition(id: Long, position: Long) = withContext(ioDispatcher) {
+        queries.updatePosition(position, id)
+    }
+
+    override suspend fun updateSupersetGroup(id: Long, supersetGroup: String?) = withContext(ioDispatcher) {
+        queries.updateSupersetGroup(supersetGroup, id)
+    }
+
+    override suspend fun updateRestSeconds(id: Long, restSeconds: Long?) = withContext(ioDispatcher) {
+        queries.updateRestSeconds(restSeconds, id)
+    }
+
+    override suspend fun updateNotes(id: Long, notes: String?) = withContext(ioDispatcher) {
+        queries.updateNotes(notes, id)
     }
 
     override suspend fun delete(id: Long) = withContext(ioDispatcher) {

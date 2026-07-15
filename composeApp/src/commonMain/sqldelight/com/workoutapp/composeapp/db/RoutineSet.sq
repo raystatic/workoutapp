@@ -16,12 +16,24 @@ CREATE TABLE routineSet (
 selectByRoutineExerciseId:
 SELECT * FROM routineSet WHERE routineExerciseId = ? ORDER BY position ASC;
 
+selectByRoutineId:
+SELECT routineSet.* FROM routineSet
+JOIN routineExercise ON routineSet.routineExerciseId = routineExercise.id
+WHERE routineExercise.routineId = ?
+ORDER BY routineSet.position ASC;
+
 selectById:
 SELECT * FROM routineSet WHERE id = ?;
 
 insert:
 INSERT INTO routineSet(routineExerciseId, position, targetReps, targetWeight, setType, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?);
+
+update:
+UPDATE routineSet SET targetReps = ?, targetWeight = ?, setType = ?, updatedAt = ? WHERE id = ?;
+
+updatePosition:
+UPDATE routineSet SET position = ? WHERE id = ?;
 
 deleteById:
 DELETE FROM routineSet WHERE id = ?;

@@ -59,4 +59,35 @@ class RoutineRepositoryTest {
         assertEquals(listOf("Pull Day"), remaining.map { it.name })
         assertTrue(remaining.none { it.id == idToDelete })
     }
+
+    @Test
+    fun add_returnsTheGeneratedId() = runTest {
+        val id = repository.add(name = "Push Day", position = 0, updatedAt = 1000L)
+
+        assertEquals(id, repository.observeAll().first().single().id)
+    }
+
+    @Test
+    fun observeById_returnsTheMatchingRoutine() = runTest {
+        val id = repository.add(name = "Push Day", position = 0, updatedAt = 1000L)
+
+        assertEquals("Push Day", repository.observeById(id).first()?.name)
+    }
+
+    @Test
+    fun observeById_unknownId_returnsNull() = runTest {
+        assertEquals(null, repository.observeById(999L).first())
+    }
+
+    @Test
+    fun update_persistsNameFolderAndNotes() = runTest {
+        val id = repository.add(name = "Push Day", position = 0, updatedAt = 1000L)
+
+        repository.update(id = id, name = "Push Day (renamed)", folderId = 7L, notes = "chest focus", updatedAt = 2000L)
+
+        val updated = repository.observeById(id).first()
+        assertEquals("Push Day (renamed)", updated?.name)
+        assertEquals(7L, updated?.folderId)
+        assertEquals("chest focus", updated?.notes)
+    }
 }

@@ -71,6 +71,13 @@ class WorkoutExerciseRepositoryTest {
     }
 
     @Test
+    fun add_returnsTheGeneratedId() = runTest {
+        val id = repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+
+        assertEquals(id, repository.observeByWorkoutId(workoutId).first().single().id)
+    }
+
+    @Test
     fun updatePosition_persistsTheNewPosition() = runTest {
         repository.add(workoutId = workoutId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
         val id = repository.observeByWorkoutId(workoutId).first().single().id

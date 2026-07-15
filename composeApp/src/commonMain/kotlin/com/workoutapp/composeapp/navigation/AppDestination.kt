@@ -21,6 +21,15 @@ sealed class AppDestination(val route: String, val label: String) {
         fun route(workoutId: Long): String = "finish_workout/$workoutId"
     }
 
+    /**
+     * Pushed from the Workout tab to create or edit a routine. The Workout tab always
+     * creates the [com.workoutapp.composeapp.db.Routine] row first, so this destination
+     * only ever edits an existing one — there's no separate "new" route.
+     */
+    data object RoutineBuilder : AppDestination("routine_builder/{routineId}", "Routine Builder") {
+        fun route(routineId: Long): String = "routine_builder/$routineId"
+    }
+
     companion object {
         val bottomTabs: List<AppDestination> = listOf(Workout, Profile)
     }
