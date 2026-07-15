@@ -10,7 +10,7 @@ private fun exercise(
     primaryMuscle: String,
     equipment: String,
     secondaryMuscles: List<String> = emptyList(),
-) = Exercise(id, name, primaryMuscle, secondaryMuscles, equipment, null, false, null, null, 1_000L, "PENDING")
+) = Exercise(id, name, primaryMuscle, secondaryMuscles, equipment, null, false, null, null, 1_000L, "PENDING", null)
 
 class ExerciseLibraryFilterTest {
     private val benchPress = exercise(1L, "Barbell Bench Press", "Chest", "Barbell", secondaryMuscles = listOf("Triceps"))

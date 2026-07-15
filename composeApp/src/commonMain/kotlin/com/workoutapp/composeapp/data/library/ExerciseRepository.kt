@@ -2,6 +2,7 @@ package com.workoutapp.composeapp.data.library
 
 import app.cash.sqldelight.coroutines.asFlow
 import app.cash.sqldelight.coroutines.mapToList
+import app.cash.sqldelight.coroutines.mapToOne
 import app.cash.sqldelight.coroutines.mapToOneOrNull
 import com.workoutapp.composeapp.db.AppDatabase
 import com.workoutapp.composeapp.db.Exercise
@@ -19,6 +20,9 @@ interface ExerciseRepository {
     /** Distinct exercises used in any workout, most-recently-used first, capped at [limit]. */
     fun observeRecentlyUsed(limit: Int): Flow<List<Exercise>>
 
+    /** Count of user-created exercises ([Exercise.isCustom]), backing the free-tier cap. */
+    fun observeCustomCount(): Flow<Long>
+
     suspend fun add(
         name: String,
         primaryMuscle: String,
@@ -28,6 +32,7 @@ interface ExerciseRepository {
         isCustom: Boolean = false,
         instructions: String? = null,
         updatedAt: Long,
+        type: String? = null,
     )
 
     suspend fun delete(id: Long)
@@ -48,6 +53,9 @@ class ExerciseRepositoryImpl(
     override fun observeRecentlyUsed(limit: Int): Flow<List<Exercise>> =
         queries.selectRecentlyUsed(limit.toLong()).asFlow().mapToList(ioDispatcher)
 
+    override fun observeCustomCount(): Flow<Long> =
+        queries.countCustom().asFlow().mapToOne(ioDispatcher)
+
     override suspend fun add(
         name: String,
         primaryMuscle: String,
@@ -57,6 +65,7 @@ class ExerciseRepositoryImpl(
         isCustom: Boolean,
         instructions: String?,
         updatedAt: Long,
+        type: String?,
     ) = withContext(ioDispatcher) {
         queries.insert(
             name = name,
@@ -69,6 +78,7 @@ class ExerciseRepositoryImpl(
             serverId = null,
             updatedAt = updatedAt,
             syncStatus = "PENDING",
+            type = type,
         )
     }
 

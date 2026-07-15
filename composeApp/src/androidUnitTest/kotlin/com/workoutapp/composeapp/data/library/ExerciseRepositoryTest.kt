@@ -83,4 +83,28 @@ class ExerciseRepositoryTest {
         assertEquals(listOf("Deadlift"), remaining.map { it.name })
         assertTrue(remaining.none { it.id == idToDelete })
     }
+
+    @Test
+    fun add_customExercise_persistsTypeAndIsCustomFlag() = runTest {
+        repository.add(
+            name = "Band Pull-Apart",
+            primaryMuscle = "Shoulders",
+            equipment = "Band",
+            isCustom = true,
+            type = "Strength",
+            updatedAt = 1000L,
+        )
+
+        val exercise = repository.observeAll().first().single()
+        assertTrue(exercise.isCustom)
+        assertEquals("Strength", exercise.type)
+    }
+
+    @Test
+    fun observeCustomCount_countsOnlyCustomExercises() = runTest {
+        repository.add(name = "Squat", primaryMuscle = "Legs", equipment = "Barbell", updatedAt = 1000L)
+        repository.add(name = "My Move", primaryMuscle = "Legs", equipment = "None", isCustom = true, updatedAt = 1000L)
+
+        assertEquals(1L, repository.observeCustomCount().first())
+    }
 }

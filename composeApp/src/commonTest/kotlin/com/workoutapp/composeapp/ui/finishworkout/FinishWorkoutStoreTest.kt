@@ -34,7 +34,7 @@ private fun workout(
 ) = Workout(id, name, startedAt, null, note, privacy, media, null, startedAt, "PENDING")
 
 private fun exercise(id: Long, name: String) =
-    Exercise(id, name, "Chest", emptyList(), "Barbell", null, false, null, null, 1_000L, "PENDING")
+    Exercise(id, name, "Chest", emptyList(), "Barbell", null, false, null, null, 1_000L, "PENDING", null)
 
 private fun workoutExercise(id: Long, workoutId: Long, exerciseId: Long, position: Long) =
     WorkoutExercise(id, workoutId, exerciseId, position, null, null, null, null, 1_000L, "PENDING")

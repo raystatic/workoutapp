@@ -24,7 +24,7 @@ private fun routine(id: Long, name: String, folderId: Long? = null, notes: Strin
     Routine(id, name, folderId, 0L, notes, null, 1_000L, "PENDING")
 
 private fun exercise(id: Long, name: String) =
-    Exercise(id, name, "Chest", emptyList(), "Barbell", null, false, null, null, 1_000L, "PENDING")
+    Exercise(id, name, "Chest", emptyList(), "Barbell", null, false, null, null, 1_000L, "PENDING", null)
 
 private fun routineExercise(
     id: Long,
