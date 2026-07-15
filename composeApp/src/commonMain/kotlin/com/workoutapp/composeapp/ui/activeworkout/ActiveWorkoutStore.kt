@@ -53,6 +53,7 @@ data class ActiveWorkoutState(
     val startedAt: Long? = null,
     val exercises: List<ActiveWorkoutExerciseUi> = emptyList(),
     val availableExercises: List<Exercise> = emptyList(),
+    val recentExercises: List<Exercise> = emptyList(),
     val showAddExercise: Boolean = false,
 ) : MviState
 
@@ -66,7 +67,7 @@ sealed interface ActiveWorkoutIntent : MviIntent {
     data class CycleSetType(val setId: Long) : ActiveWorkoutIntent
     data object ShowAddExercise : ActiveWorkoutIntent
     data object HideAddExercise : ActiveWorkoutIntent
-    data class AddExercise(val exerciseId: Long) : ActiveWorkoutIntent
+    data class AddExercises(val exerciseIds: List<Long>) : ActiveWorkoutIntent
     data class RemoveExercise(val workoutExerciseId: Long) : ActiveWorkoutIntent
     data class MoveExerciseUp(val workoutExerciseId: Long) : ActiveWorkoutIntent
     data class MoveExerciseDown(val workoutExerciseId: Long) : ActiveWorkoutIntent
@@ -81,10 +82,14 @@ val REST_OVERRIDE_PRESETS: List<Long?> = listOf(null, 30L, 60L, 90L, 120L, 180L,
 /** No effects currently fire; the type exists so [StoreViewModel] can be parameterized. */
 sealed interface ActiveWorkoutEffect : MviEffect
 
+/** Number of exercises surfaced by the "Recent" shortcut in the exercise picker. */
+private const val RECENT_EXERCISES_LIMIT = 8
+
 private data class DerivedWorkoutData(
     val startedAt: Long?,
     val exercises: List<ActiveWorkoutExerciseUi>,
     val availableExercises: List<Exercise>,
+    val recentExercises: List<Exercise>,
 )
 
 /**
@@ -116,7 +121,8 @@ class ActiveWorkoutStore(
             workoutExerciseRepository.observeByWorkoutId(workoutId),
             workoutSetRepository.observeByWorkoutId(workoutId),
             exerciseRepository.observeAll(),
-        ) { workout, workoutExercises, sets, exercises ->
+            exerciseRepository.observeRecentlyUsed(RECENT_EXERCISES_LIMIT),
+        ) { workout, workoutExercises, sets, exercises, recentExercises ->
             val exerciseNames = exercises.associateBy { it.id }
             val setsByExercise = sets.groupBy { it.workoutExerciseId }
             val baseExercises = workoutExercises
@@ -135,6 +141,7 @@ class ActiveWorkoutStore(
                 startedAt = workout?.startedAt,
                 exercises = baseExercises.withSupersetInfo(),
                 availableExercises = exercises,
+                recentExercises = recentExercises,
             )
         }.onEach { derived ->
             setState {
@@ -142,6 +149,7 @@ class ActiveWorkoutStore(
                     startedAt = derived.startedAt,
                     exercises = derived.exercises,
                     availableExercises = derived.availableExercises,
+                    recentExercises = derived.recentExercises,
                 )
             }
         }.launchIn(scope)
@@ -159,7 +167,7 @@ class ActiveWorkoutStore(
             is ActiveWorkoutIntent.CycleSetType -> updateSet(intent.setId) { it.copy(setType = it.setType.next()) }
             ActiveWorkoutIntent.ShowAddExercise -> setState { it.copy(showAddExercise = true) }
             ActiveWorkoutIntent.HideAddExercise -> setState { it.copy(showAddExercise = false) }
-            is ActiveWorkoutIntent.AddExercise -> addExercise(intent.exerciseId)
+            is ActiveWorkoutIntent.AddExercises -> addExercises(intent.exerciseIds)
             is ActiveWorkoutIntent.RemoveExercise ->
                 scope.launch { workoutExerciseRepository.delete(intent.workoutExerciseId) }
             is ActiveWorkoutIntent.MoveExerciseUp -> moveExercise(intent.workoutExerciseId, offset = -1)
@@ -229,15 +237,18 @@ class ActiveWorkoutStore(
         }
     }
 
-    private fun addExercise(exerciseId: Long) {
-        val nextPosition = state.value.exercises.size.toLong()
+    private fun addExercises(exerciseIds: List<Long>) {
+        if (exerciseIds.isEmpty()) return
+        val startPosition = state.value.exercises.size.toLong()
         scope.launch {
-            workoutExerciseRepository.add(
-                workoutId = workoutId,
-                exerciseId = exerciseId,
-                position = nextPosition,
-                updatedAt = currentTimeMillis(),
-            )
+            exerciseIds.forEachIndexed { index, exerciseId ->
+                workoutExerciseRepository.add(
+                    workoutId = workoutId,
+                    exerciseId = exerciseId,
+                    position = startPosition + index,
+                    updatedAt = currentTimeMillis(),
+                )
+            }
             setState { it.copy(showAddExercise = false) }
         }
     }

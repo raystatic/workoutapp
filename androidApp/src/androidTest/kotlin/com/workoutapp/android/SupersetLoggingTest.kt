@@ -90,5 +90,6 @@ class SupersetLoggingTest {
             composeRule.onAllNodesWithText(name).fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText(name).performClick()
+        composeRule.onNodeWithTag("add_exercise_confirm_button").performClick()
     }
 }

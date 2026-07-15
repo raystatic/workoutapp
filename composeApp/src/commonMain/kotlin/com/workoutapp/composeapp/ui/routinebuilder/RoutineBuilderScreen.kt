@@ -12,7 +12,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AssistChip
@@ -29,12 +28,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
-import com.workoutapp.composeapp.db.Exercise
 import com.workoutapp.composeapp.ui.designsystem.components.AppCard
 import com.workoutapp.composeapp.ui.designsystem.components.AppDropdownMenu
 import com.workoutapp.composeapp.ui.designsystem.components.AppDropdownMenuItem
-import com.workoutapp.composeapp.ui.designsystem.components.AppListRow
 import com.workoutapp.composeapp.ui.designsystem.components.AppNumberField
 import com.workoutapp.composeapp.ui.designsystem.components.AppTextField
 import com.workoutapp.composeapp.ui.designsystem.components.AppTopBar
@@ -43,6 +39,7 @@ import com.workoutapp.composeapp.ui.designsystem.components.PrimaryButton
 import com.workoutapp.composeapp.ui.designsystem.components.SecondaryButton
 import com.workoutapp.composeapp.ui.designsystem.components.SetTypeIndicator
 import com.workoutapp.composeapp.ui.designsystem.theme.LocalSpacing
+import com.workoutapp.composeapp.ui.library.ExerciseLibraryPicker
 import org.koin.compose.koinInject
 import org.koin.core.parameter.parametersOf
 import com.workoutapp.composeapp.data.db.SetType as DbSetType
@@ -122,10 +119,12 @@ fun RoutineBuilderScreen(
     }
 
     if (state.showAddExercise) {
-        AddExerciseDialog(
+        ExerciseLibraryPicker(
             exercises = state.availableExercises,
-            onSelect = { store.onIntent(RoutineBuilderIntent.AddExercise(it)) },
+            recentExercises = state.recentExercises,
+            onConfirm = { store.onIntent(RoutineBuilderIntent.AddExercises(it)) },
             onDismiss = { store.onIntent(RoutineBuilderIntent.HideAddExercise) },
+            testTagPrefix = "routine_add_exercise",
         )
     }
 }
@@ -277,32 +276,6 @@ private fun RoutineSetRow(setUi: RoutineBuilderSetUi, onIntent: (RoutineBuilderI
             onClick = { onIntent(RoutineBuilderIntent.RemoveSet(set.id)) },
             modifier = Modifier.testTag("routine_remove_set_${set.id}"),
         ) { Text("✕") }
-    }
-}
-
-@Composable
-private fun AddExerciseDialog(exercises: List<Exercise>, onSelect: (Long) -> Unit, onDismiss: () -> Unit) {
-    val spacing = LocalSpacing.current
-    Dialog(onDismissRequest = onDismiss) {
-        AppCard(modifier = Modifier.testTag("routine_add_exercise_dialog")) {
-            Text("Add Exercise", style = MaterialTheme.typography.titleMedium)
-            LazyColumn(modifier = Modifier.padding(top = spacing.sm)) {
-                items(exercises, key = { it.id }) { exercise ->
-                    AppListRow(
-                        title = exercise.name,
-                        subtitle = exercise.primaryMuscle,
-                        modifier = Modifier
-                            .testTag("routine_exercise_option_${exercise.id}")
-                            .clickable { onSelect(exercise.id) },
-                    )
-                }
-            }
-            SecondaryButton(
-                text = "Cancel",
-                onClick = onDismiss,
-                modifier = Modifier.padding(top = spacing.sm).testTag("routine_cancel_add_exercise"),
-            )
-        }
     }
 }
 

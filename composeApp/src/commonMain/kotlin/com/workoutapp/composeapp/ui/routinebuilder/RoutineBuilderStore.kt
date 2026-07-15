@@ -48,6 +48,7 @@ data class RoutineBuilderState(
     val folderIdText: String = "",
     val exercises: List<RoutineBuilderExerciseUi> = emptyList(),
     val availableExercises: List<Exercise> = emptyList(),
+    val recentExercises: List<Exercise> = emptyList(),
     val showAddExercise: Boolean = false,
 ) : MviState
 
@@ -56,7 +57,7 @@ sealed interface RoutineBuilderIntent : MviIntent {
     data class FolderIdChanged(val value: String) : RoutineBuilderIntent
     data object ShowAddExercise : RoutineBuilderIntent
     data object HideAddExercise : RoutineBuilderIntent
-    data class AddExercise(val exerciseId: Long) : RoutineBuilderIntent
+    data class AddExercises(val exerciseIds: List<Long>) : RoutineBuilderIntent
     data class RemoveExercise(val routineExerciseId: Long) : RoutineBuilderIntent
     data class MoveExerciseUp(val routineExerciseId: Long) : RoutineBuilderIntent
     data class MoveExerciseDown(val routineExerciseId: Long) : RoutineBuilderIntent
@@ -74,10 +75,14 @@ sealed interface RoutineBuilderIntent : MviIntent {
 /** No effects currently fire; the type exists so [StoreViewModel] can be parameterized. */
 sealed interface RoutineBuilderEffect : MviEffect
 
+/** Number of exercises surfaced by the "Recent" shortcut in the exercise picker. */
+private const val RECENT_EXERCISES_LIMIT = 8
+
 private data class DerivedRoutineData(
     val routine: Routine?,
     val exercises: List<RoutineBuilderExerciseUi>,
     val availableExercises: List<Exercise>,
+    val recentExercises: List<Exercise>,
 )
 
 /**
@@ -106,7 +111,8 @@ class RoutineBuilderStore(
             routineExerciseRepository.observeByRoutineId(routineId),
             routineSetRepository.observeByRoutineId(routineId),
             exerciseRepository.observeAll(),
-        ) { routine, routineExercises, sets, exercises ->
+            exerciseRepository.observeRecentlyUsed(RECENT_EXERCISES_LIMIT),
+        ) { routine, routineExercises, sets, exercises, recentExercises ->
             val exerciseNames = exercises.associateBy { it.id }
             val setsByExercise = sets.groupBy { it.routineExerciseId }
             val exercisesUi = routineExercises
@@ -119,7 +125,12 @@ class RoutineBuilderStore(
                     )
                 }
                 .withSupersetLabels()
-            DerivedRoutineData(routine = routine, exercises = exercisesUi, availableExercises = exercises)
+            DerivedRoutineData(
+                routine = routine,
+                exercises = exercisesUi,
+                availableExercises = exercises,
+                recentExercises = recentExercises,
+            )
         }.onEach { derived ->
             latestNotes = derived.routine?.notes
             setState {
@@ -128,6 +139,7 @@ class RoutineBuilderStore(
                     folderIdText = derived.routine?.folderId?.toString().orEmpty(),
                     exercises = derived.exercises,
                     availableExercises = derived.availableExercises,
+                    recentExercises = derived.recentExercises,
                 )
             }
         }.launchIn(scope)
@@ -139,7 +151,7 @@ class RoutineBuilderStore(
             is RoutineBuilderIntent.FolderIdChanged -> updateRoutine(folderIdText = intent.value)
             RoutineBuilderIntent.ShowAddExercise -> setState { it.copy(showAddExercise = true) }
             RoutineBuilderIntent.HideAddExercise -> setState { it.copy(showAddExercise = false) }
-            is RoutineBuilderIntent.AddExercise -> addExercise(intent.exerciseId)
+            is RoutineBuilderIntent.AddExercises -> addExercises(intent.exerciseIds)
             is RoutineBuilderIntent.RemoveExercise ->
                 scope.launch { routineExerciseRepository.delete(intent.routineExerciseId) }
             is RoutineBuilderIntent.MoveExerciseUp -> moveExercise(intent.routineExerciseId, offset = -1)
@@ -175,15 +187,18 @@ class RoutineBuilderStore(
         }
     }
 
-    private fun addExercise(exerciseId: Long) {
-        val nextPosition = state.value.exercises.size.toLong()
+    private fun addExercises(exerciseIds: List<Long>) {
+        if (exerciseIds.isEmpty()) return
+        val startPosition = state.value.exercises.size.toLong()
         scope.launch {
-            routineExerciseRepository.add(
-                routineId = routineId,
-                exerciseId = exerciseId,
-                position = nextPosition,
-                updatedAt = currentTimeMillis(),
-            )
+            exerciseIds.forEachIndexed { index, exerciseId ->
+                routineExerciseRepository.add(
+                    routineId = routineId,
+                    exerciseId = exerciseId,
+                    position = startPosition + index,
+                    updatedAt = currentTimeMillis(),
+                )
+            }
             setState { it.copy(showAddExercise = false) }
         }
     }

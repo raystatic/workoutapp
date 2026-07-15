@@ -49,6 +49,7 @@ class RoutineBuilderTest {
             composeRule.onAllNodesWithText("Barbell Bench Press").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Barbell Bench Press").performClick()
+        composeRule.onNodeWithTag("routine_add_exercise_confirm_button").performClick()
 
         val routineExerciseRepository = GlobalContext.get().get<RoutineExerciseRepository>()
         val routineExerciseId = runBlocking {
