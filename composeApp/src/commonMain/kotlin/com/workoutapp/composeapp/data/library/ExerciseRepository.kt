@@ -12,6 +12,9 @@ import kotlinx.coroutines.withContext
 interface ExerciseRepository {
     fun observeAll(): Flow<List<Exercise>>
 
+    /** Distinct exercises used in any workout, most-recently-used first, capped at [limit]. */
+    fun observeRecentlyUsed(limit: Int): Flow<List<Exercise>>
+
     suspend fun add(
         name: String,
         primaryMuscle: String,
@@ -34,6 +37,9 @@ class ExerciseRepositoryImpl(
 
     override fun observeAll(): Flow<List<Exercise>> =
         queries.selectAll().asFlow().mapToList(ioDispatcher)
+
+    override fun observeRecentlyUsed(limit: Int): Flow<List<Exercise>> =
+        queries.selectRecentlyUsed(limit.toLong()).asFlow().mapToList(ioDispatcher)
 
     override suspend fun add(
         name: String,

@@ -41,6 +41,7 @@ class FinishWorkoutTest {
             composeRule.onAllNodesWithText("Barbell Bench Press").fetchSemanticsNodes().isNotEmpty()
         }
         composeRule.onNodeWithText("Barbell Bench Press").performClick()
+        composeRule.onNodeWithTag("add_exercise_confirm_button").performClick()
 
         val workoutExerciseId = runBlocking {
             workoutExerciseRepository.observeByWorkoutId(workoutId).first { it.isNotEmpty() }.first().id

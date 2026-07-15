@@ -26,3 +26,17 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 
 deleteById:
 DELETE FROM exercise WHERE id = ?;
+
+-- Distinct exercises used in any workout, most-recently-used first — backs the
+-- exercise picker's "Recent" shortcut (#20).
+selectRecentlyUsed:
+SELECT exercise.*
+FROM exercise
+JOIN (
+    SELECT workoutExercise.exerciseId AS exerciseId, MAX(workout.startedAt) AS lastUsedAt
+    FROM workoutExercise
+    JOIN workout ON workoutExercise.workoutId = workout.id
+    GROUP BY workoutExercise.exerciseId
+) AS recent ON recent.exerciseId = exercise.id
+ORDER BY recent.lastUsedAt DESC
+LIMIT ?;

@@ -172,10 +172,12 @@ private class FakeWorkoutSetRepository(seed: List<WorkoutSet>) : WorkoutSetRepos
     }
 }
 
-private class FakeExerciseRepository(seed: List<Exercise>) : ExerciseRepository {
+private class FakeExerciseRepository(seed: List<Exercise>, private val recent: List<Exercise> = emptyList()) : ExerciseRepository {
     private val exercisesFlow = MutableStateFlow(seed)
 
     override fun observeAll(): Flow<List<Exercise>> = exercisesFlow
+
+    override fun observeRecentlyUsed(limit: Int): Flow<List<Exercise>> = MutableStateFlow(recent.take(limit))
 
     override suspend fun add(
         name: String,
@@ -212,6 +214,7 @@ class ActiveWorkoutStoreTest {
         workoutExercises: List<WorkoutExercise> = emptyList(),
         sets: List<WorkoutSet> = emptyList(),
         exercises: List<Exercise> = emptyList(),
+        recentExercises: List<Exercise> = emptyList(),
         otherWorkoutExercises: List<WorkoutExercise> = emptyList(),
         otherSets: List<WorkoutSet> = emptyList(),
         restTimerController: FakeRestTimerController = FakeRestTimerController(),
@@ -224,7 +227,7 @@ class ActiveWorkoutStoreTest {
             workoutRepository = FakeWorkoutRepository(workout),
             workoutExerciseRepository = workoutExerciseRepository,
             workoutSetRepository = workoutSetRepository,
-            exerciseRepository = FakeExerciseRepository(exercises),
+            exerciseRepository = FakeExerciseRepository(exercises, recentExercises),
             previousSetResolver = PreviousSetResolver(workoutExerciseRepository, workoutSetRepository),
             restTimerController = restTimerController,
             restTimerSettingsRepository = FakeRestTimerSettingsRepository(defaultRestSeconds),
@@ -484,20 +487,56 @@ class ActiveWorkoutStoreTest {
     }
 
     @Test
-    fun addExercise_appendsAtNextPositionAndHidesDialog() = runTest {
+    fun addExercises_appendsAtNextPositionAndHidesDialog() = runTest {
         val store = newStore(
             workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
             exercises = listOf(exercise(100L, "Bench Press"), exercise(200L, "Squat")),
         )
         store.onIntent(ActiveWorkoutIntent.ShowAddExercise)
 
-        store.onIntent(ActiveWorkoutIntent.AddExercise(200L))
+        store.onIntent(ActiveWorkoutIntent.AddExercises(listOf(200L)))
 
         val exercises = store.state.value.exercises
         assertEquals(2, exercises.size)
         assertEquals(1L, exercises[1].position)
         assertEquals("Squat", exercises[1].exerciseName)
         assertFalse(store.state.value.showAddExercise)
+    }
+
+    @Test
+    fun addExercises_withMultipleIds_appendsAllInOrder() = runTest {
+        val store = newStore(
+            exercises = listOf(exercise(100L, "Bench Press"), exercise(200L, "Squat"), exercise(300L, "Deadlift")),
+        )
+
+        store.onIntent(ActiveWorkoutIntent.AddExercises(listOf(200L, 300L)))
+
+        val names = store.state.value.exercises.sortedBy { it.position }.map { it.exerciseName }
+        assertEquals(listOf("Squat", "Deadlift"), names)
+    }
+
+    @Test
+    fun addExercises_withEmptyList_doesNothing() = runTest {
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+        )
+        store.onIntent(ActiveWorkoutIntent.ShowAddExercise)
+
+        store.onIntent(ActiveWorkoutIntent.AddExercises(emptyList()))
+
+        assertEquals(1, store.state.value.exercises.size)
+        assertTrue(store.state.value.showAddExercise)
+    }
+
+    @Test
+    fun initialState_exposesRecentlyUsedExercises() {
+        val store = newStore(
+            exercises = listOf(exercise(100L, "Bench Press"), exercise(200L, "Squat")),
+            recentExercises = listOf(exercise(200L, "Squat")),
+        )
+
+        assertEquals(listOf("Squat"), store.state.value.recentExercises.map { it.name })
     }
 
     @Test
