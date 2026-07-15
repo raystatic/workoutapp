@@ -102,4 +102,55 @@ class RoutineSetRepositoryTest {
 
         assertEquals(emptyList(), repository.observeByRoutineExerciseId(routineExerciseId).first())
     }
+
+    @Test
+    fun update_persistsTargetRepsWeightAndSetType() = runTest {
+        repository.add(routineExerciseId = routineExerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByRoutineExerciseId(routineExerciseId).first().single().id
+
+        repository.update(id = id, targetReps = 12, targetWeight = 70.0, setType = SetType.DROP, updatedAt = 2000L)
+
+        val updated = repository.observeByRoutineExerciseId(routineExerciseId).first().single()
+        assertEquals(12L, updated.targetReps)
+        assertEquals(70.0, updated.targetWeight)
+        assertEquals(SetType.DROP, updated.setType)
+    }
+
+    @Test
+    fun updatePosition_persistsTheNewPosition() = runTest {
+        repository.add(routineExerciseId = routineExerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByRoutineExerciseId(routineExerciseId).first().single().id
+
+        repository.updatePosition(id, 5)
+
+        assertEquals(5L, repository.observeByRoutineExerciseId(routineExerciseId).first().single().position)
+    }
+
+    @Test
+    fun observeByRoutineId_returnsSetsAcrossAllOfARoutinesExercises() = runTest {
+        val routineId = database.routineQueries.selectAll().executeAsList().single().id
+        val exerciseId = database.exerciseQueries.selectAll().executeAsList().single().id
+        database.routineExerciseQueries.insert(
+            routineId = routineId,
+            exerciseId = exerciseId,
+            position = 1,
+            supersetGroup = null,
+            restSeconds = null,
+            notes = null,
+            serverId = null,
+            updatedAt = 1000L,
+            syncStatus = "PENDING",
+        )
+        val secondRoutineExerciseId = database.routineExerciseQueries.selectByRoutineId(routineId)
+            .executeAsList()
+            .first { it.id != routineExerciseId }
+            .id
+
+        repository.add(routineExerciseId = routineExerciseId, position = 0, targetReps = 8, updatedAt = 1000L)
+        repository.add(routineExerciseId = secondRoutineExerciseId, position = 0, targetReps = 10, updatedAt = 1000L)
+
+        val sets = repository.observeByRoutineId(routineId).first()
+
+        assertEquals(setOf(8L, 10L), sets.map { it.targetReps }.toSet())
+    }
 }

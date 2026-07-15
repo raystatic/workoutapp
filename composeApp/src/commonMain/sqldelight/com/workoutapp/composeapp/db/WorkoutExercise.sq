@@ -39,5 +39,8 @@ UPDATE workoutExercise SET supersetGroup = ? WHERE id = ?;
 updateRestSeconds:
 UPDATE workoutExercise SET restSeconds = ? WHERE id = ?;
 
+lastInsertRowId:
+SELECT last_insert_rowid();
+
 deleteById:
 DELETE FROM workoutExercise WHERE id = ?;

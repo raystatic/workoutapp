@@ -9,6 +9,7 @@ import org.junit.After
 import org.junit.Before
 import org.junit.Test
 import kotlin.test.assertEquals
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 
 class RoutineExerciseRepositoryTest {
@@ -97,5 +98,58 @@ class RoutineExerciseRepositoryTest {
 
         val remaining = repository.observeByRoutineId(routineId).first()
         assertTrue(remaining.isEmpty())
+    }
+
+    @Test
+    fun add_returnsTheGeneratedId() = runTest {
+        val id = repository.add(routineId = routineId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+
+        assertEquals(id, repository.observeByRoutineId(routineId).first().single().id)
+    }
+
+    @Test
+    fun updatePosition_persistsTheNewPosition() = runTest {
+        repository.add(routineId = routineId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByRoutineId(routineId).first().single().id
+
+        repository.updatePosition(id, 3)
+
+        assertEquals(3L, repository.observeByRoutineId(routineId).first().single().position)
+    }
+
+    @Test
+    fun updateSupersetGroup_persistsTheGroupAndClearingItSetsNull() = runTest {
+        repository.add(routineId = routineId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByRoutineId(routineId).first().single().id
+
+        repository.updateSupersetGroup(id, "sg-$id")
+        assertEquals("sg-$id", repository.observeByRoutineId(routineId).first().single().supersetGroup)
+
+        repository.updateSupersetGroup(id, null)
+        assertNull(repository.observeByRoutineId(routineId).first().single().supersetGroup)
+    }
+
+    @Test
+    fun updateRestSeconds_persistsTheNewValueAndClearingItSetsNull() = runTest {
+        repository.add(routineId = routineId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByRoutineId(routineId).first().single().id
+
+        repository.updateRestSeconds(id, 60L)
+        assertEquals(60L, repository.observeByRoutineId(routineId).first().single().restSeconds)
+
+        repository.updateRestSeconds(id, null)
+        assertNull(repository.observeByRoutineId(routineId).first().single().restSeconds)
+    }
+
+    @Test
+    fun updateNotes_persistsTheNewValueAndClearingItSetsNull() = runTest {
+        repository.add(routineId = routineId, exerciseId = exerciseId, position = 0, updatedAt = 1000L)
+        val id = repository.observeByRoutineId(routineId).first().single().id
+
+        repository.updateNotes(id, "go slow on the eccentric")
+        assertEquals("go slow on the eccentric", repository.observeByRoutineId(routineId).first().single().notes)
+
+        repository.updateNotes(id, null)
+        assertNull(repository.observeByRoutineId(routineId).first().single().notes)
     }
 }

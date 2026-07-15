@@ -19,5 +19,11 @@ insert:
 INSERT INTO routine(name, folderId, position, notes, serverId, updatedAt, syncStatus)
 VALUES (?, ?, ?, ?, ?, ?, ?);
 
+update:
+UPDATE routine SET name = ?, folderId = ?, notes = ?, updatedAt = ? WHERE id = ?;
+
+lastInsertRowId:
+SELECT last_insert_rowid();
+
 deleteById:
 DELETE FROM routine WHERE id = ?;

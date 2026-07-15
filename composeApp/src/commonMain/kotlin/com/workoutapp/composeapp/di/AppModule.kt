@@ -38,6 +38,7 @@ import com.workoutapp.composeapp.ui.activeworkout.ActiveWorkoutStore
 import com.workoutapp.composeapp.ui.finishworkout.FinishWorkoutStore
 import com.workoutapp.composeapp.ui.resttimer.RestTimerController
 import com.workoutapp.composeapp.ui.resttimer.RestTimerStore
+import com.workoutapp.composeapp.ui.routinebuilder.RoutineBuilderStore
 import com.workoutapp.composeapp.ui.workout.WorkoutStore
 import org.koin.core.module.Module
 import org.koin.dsl.bind
@@ -72,8 +73,9 @@ val appModule = module {
     single<UserProfileRepository> { UserProfileRepositoryImpl(get()) }
     single<RestTimerSettingsRepository> { RestTimerSettingsRepositoryImpl(get()) }
     single { PreviousSetResolver(get(), get()) }
-    single { WorkoutStore(get(), get()) }
+    single { WorkoutStore(get(), get(), get(), get(), get(), get()) }
     single { RestTimerStore(get()) } bind RestTimerController::class
     factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get()) }
     factory { (workoutId: Long) -> FinishWorkoutStore(workoutId, get(), get(), get(), get(), get(), get()) }
+    factory { (routineId: Long) -> RoutineBuilderStore(routineId, get(), get(), get(), get()) }
 }

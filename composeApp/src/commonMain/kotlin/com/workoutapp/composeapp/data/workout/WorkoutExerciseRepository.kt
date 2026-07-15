@@ -12,6 +12,7 @@ import kotlinx.coroutines.withContext
 interface WorkoutExerciseRepository {
     fun observeByWorkoutId(workoutId: Long): Flow<List<WorkoutExercise>>
 
+    /** Inserts the workout exercise and returns its generated [WorkoutExercise.id]. */
     suspend fun add(
         workoutId: Long,
         exerciseId: Long,
@@ -20,7 +21,7 @@ interface WorkoutExerciseRepository {
         restSeconds: Long? = null,
         notes: String? = null,
         updatedAt: Long,
-    )
+    ): Long
 
     suspend fun updatePosition(id: Long, position: Long)
 
@@ -55,18 +56,21 @@ class WorkoutExerciseRepositoryImpl(
         restSeconds: Long?,
         notes: String?,
         updatedAt: Long,
-    ) = withContext(ioDispatcher) {
-        queries.insert(
-            workoutId = workoutId,
-            exerciseId = exerciseId,
-            position = position,
-            supersetGroup = supersetGroup,
-            restSeconds = restSeconds,
-            notes = notes,
-            serverId = null,
-            updatedAt = updatedAt,
-            syncStatus = "PENDING",
-        )
+    ): Long = withContext(ioDispatcher) {
+        queries.transactionWithResult {
+            queries.insert(
+                workoutId = workoutId,
+                exerciseId = exerciseId,
+                position = position,
+                supersetGroup = supersetGroup,
+                restSeconds = restSeconds,
+                notes = notes,
+                serverId = null,
+                updatedAt = updatedAt,
+                syncStatus = "PENDING",
+            )
+            queries.lastInsertRowId().executeAsOne()
+        }
     }
 
     override suspend fun updatePosition(id: Long, position: Long) = withContext(ioDispatcher) {

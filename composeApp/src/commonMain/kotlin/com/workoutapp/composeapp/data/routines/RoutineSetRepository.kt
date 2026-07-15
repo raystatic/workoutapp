@@ -13,6 +13,8 @@ import kotlinx.coroutines.withContext
 interface RoutineSetRepository {
     fun observeByRoutineExerciseId(routineExerciseId: Long): Flow<List<RoutineSet>>
 
+    fun observeByRoutineId(routineId: Long): Flow<List<RoutineSet>>
+
     suspend fun add(
         routineExerciseId: Long,
         position: Long = 0,
@@ -21,6 +23,16 @@ interface RoutineSetRepository {
         setType: SetType = SetType.NORMAL,
         updatedAt: Long,
     )
+
+    suspend fun update(
+        id: Long,
+        targetReps: Long?,
+        targetWeight: Double?,
+        setType: SetType,
+        updatedAt: Long,
+    )
+
+    suspend fun updatePosition(id: Long, position: Long)
 
     suspend fun delete(id: Long)
 }
@@ -33,6 +45,9 @@ class RoutineSetRepositoryImpl(
 
     override fun observeByRoutineExerciseId(routineExerciseId: Long): Flow<List<RoutineSet>> =
         queries.selectByRoutineExerciseId(routineExerciseId).asFlow().mapToList(ioDispatcher)
+
+    override fun observeByRoutineId(routineId: Long): Flow<List<RoutineSet>> =
+        queries.selectByRoutineId(routineId).asFlow().mapToList(ioDispatcher)
 
     override suspend fun add(
         routineExerciseId: Long,
@@ -52,6 +67,20 @@ class RoutineSetRepositoryImpl(
             updatedAt = updatedAt,
             syncStatus = "PENDING",
         )
+    }
+
+    override suspend fun update(
+        id: Long,
+        targetReps: Long?,
+        targetWeight: Double?,
+        setType: SetType,
+        updatedAt: Long,
+    ) = withContext(ioDispatcher) {
+        queries.update(targetReps = targetReps, targetWeight = targetWeight, setType = setType, updatedAt = updatedAt, id = id)
+    }
+
+    override suspend fun updatePosition(id: Long, position: Long) = withContext(ioDispatcher) {
+        queries.updatePosition(position, id)
     }
 
     override suspend fun delete(id: Long) = withContext(ioDispatcher) {

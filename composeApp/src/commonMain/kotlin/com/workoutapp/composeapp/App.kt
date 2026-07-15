@@ -20,6 +20,7 @@ import com.workoutapp.composeapp.ui.designsystem.components.BottomTabItem
 import com.workoutapp.composeapp.ui.designsystem.theme.WorkoutAppTheme
 import com.workoutapp.composeapp.ui.finishworkout.FinishWorkoutScreen
 import com.workoutapp.composeapp.ui.profile.ProfileScreen
+import com.workoutapp.composeapp.ui.routinebuilder.RoutineBuilderScreen
 import com.workoutapp.composeapp.ui.workout.WorkoutScreen
 
 /**
@@ -70,6 +71,9 @@ fun App() {
                         onWorkoutStarted = { workoutId ->
                             navController.navigate(AppDestination.ActiveWorkout.route(workoutId))
                         },
+                        onOpenRoutineBuilder = { routineId ->
+                            navController.navigate(AppDestination.RoutineBuilder.route(routineId))
+                        },
                     )
                 }
                 composable(AppDestination.Profile.route) {
@@ -100,6 +104,16 @@ fun App() {
                         workoutId = workoutId,
                         onBack = { navController.popBackStack() },
                         onDone = { navController.popBackStack(AppDestination.Workout.route, false) },
+                    )
+                }
+                composable(
+                    route = AppDestination.RoutineBuilder.route,
+                    arguments = listOf(navArgument("routineId") { type = NavType.LongType }),
+                ) { backStackEntry ->
+                    val routineId = backStackEntry.arguments?.read { getLong("routineId") } ?: 0L
+                    RoutineBuilderScreen(
+                        routineId = routineId,
+                        onDone = { navController.popBackStack() },
                     )
                 }
             }
