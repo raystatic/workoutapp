@@ -5,6 +5,9 @@ import com.workoutapp.composeapp.data.db.currentTimeMillis
 import com.workoutapp.composeapp.data.library.ExerciseRepository
 import com.workoutapp.composeapp.data.profile.UserProfileRepository
 import com.workoutapp.composeapp.data.progress.PersonalRecordRepository
+import com.workoutapp.composeapp.data.routines.RoutineExerciseRepository
+import com.workoutapp.composeapp.data.routines.RoutineRepository
+import com.workoutapp.composeapp.data.routines.RoutineSetRepository
 import com.workoutapp.composeapp.data.workout.CompletedSetPerformance
 import com.workoutapp.composeapp.data.workout.WorkoutExerciseRepository
 import com.workoutapp.composeapp.data.workout.WorkoutRepository
@@ -52,10 +55,13 @@ sealed interface FinishWorkoutIntent : MviIntent {
     data class AddPhoto(val uri: String) : FinishWorkoutIntent
     data class RemovePhoto(val uri: String) : FinishWorkoutIntent
     data object Save : FinishWorkoutIntent
+    data object SaveAsRoutine : FinishWorkoutIntent
 }
 
-/** No effects currently fire; the type exists so [StoreViewModel] can be parameterized. */
-sealed interface FinishWorkoutEffect : MviEffect
+sealed interface FinishWorkoutEffect : MviEffect {
+    /** Fires once [FinishWorkoutIntent.SaveAsRoutine] has created the routine, so the caller can navigate to it. */
+    data class NavigateToRoutineBuilder(val routineId: Long) : FinishWorkoutEffect
+}
 
 /**
  * Backs the finish/save screen for [workoutId]: an editable recap (name, duration, note, privacy,
@@ -71,6 +77,9 @@ class FinishWorkoutStore(
     private val exerciseRepository: ExerciseRepository,
     private val personalRecordRepository: PersonalRecordRepository,
     private val userProfileRepository: UserProfileRepository,
+    private val routineRepository: RoutineRepository,
+    private val routineExerciseRepository: RoutineExerciseRepository,
+    private val routineSetRepository: RoutineSetRepository,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : StoreViewModel<FinishWorkoutState, FinishWorkoutIntent, FinishWorkoutEffect>(
     FinishWorkoutState(workoutId = workoutId),
@@ -101,6 +110,7 @@ class FinishWorkoutStore(
             is FinishWorkoutIntent.AddPhoto -> setState { it.copy(media = it.media + intent.uri) }
             is FinishWorkoutIntent.RemovePhoto -> setState { it.copy(media = it.media - intent.uri) }
             FinishWorkoutIntent.Save -> save()
+            FinishWorkoutIntent.SaveAsRoutine -> saveAsRoutine()
         }
     }
 
@@ -168,6 +178,41 @@ class FinishWorkoutStore(
                     ),
                 )
             }
+        }
+    }
+
+    /** Deep-copies this workout's exercises and sets into a new routine, then hands off to the builder to edit before saving. */
+    private fun saveAsRoutine() {
+        scope.launch {
+            val now = currentTimeMillis()
+            val workout = workoutRepository.getById(workoutId) ?: return@launch
+            val workoutExercises = workoutExerciseRepository.observeByWorkoutId(workoutId).first().sortedBy { it.position }
+            val setsByWorkoutExercise = workoutSetRepository.observeByWorkoutId(workoutId).first().groupBy { it.workoutExerciseId }
+
+            val routineId = routineRepository.add(name = workout.name, updatedAt = now)
+            for (workoutExercise in workoutExercises) {
+                val routineExerciseId = routineExerciseRepository.add(
+                    routineId = routineId,
+                    exerciseId = workoutExercise.exerciseId,
+                    position = workoutExercise.position,
+                    supersetGroup = workoutExercise.supersetGroup,
+                    restSeconds = workoutExercise.restSeconds,
+                    notes = workoutExercise.notes,
+                    updatedAt = now,
+                )
+                val workoutSets = setsByWorkoutExercise[workoutExercise.id].orEmpty().sortedBy { it.position }
+                for (workoutSet in workoutSets) {
+                    routineSetRepository.add(
+                        routineExerciseId = routineExerciseId,
+                        position = workoutSet.position,
+                        targetReps = workoutSet.reps,
+                        targetWeight = workoutSet.weight,
+                        setType = workoutSet.setType,
+                        updatedAt = now,
+                    )
+                }
+            }
+            sendEffect(FinishWorkoutEffect.NavigateToRoutineBuilder(routineId))
         }
     }
 }

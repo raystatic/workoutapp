@@ -108,6 +108,9 @@ fun App() {
                         workoutId = workoutId,
                         onBack = { navController.popBackStack() },
                         onDone = { navController.popBackStack(AppDestination.Workout.route, false) },
+                        onSaveAsRoutine = { routineId ->
+                            navController.navigate(AppDestination.RoutineBuilder.route(routineId))
+                        },
                     )
                 }
                 composable(

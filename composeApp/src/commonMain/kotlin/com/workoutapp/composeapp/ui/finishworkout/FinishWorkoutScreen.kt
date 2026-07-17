@@ -16,6 +16,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -46,9 +47,18 @@ fun FinishWorkoutScreen(
     workoutId: Long,
     onBack: () -> Unit = {},
     onDone: () -> Unit = {},
+    onSaveAsRoutine: (Long) -> Unit = {},
     store: FinishWorkoutStore = koinInject { parametersOf(workoutId) },
 ) {
     val state by store.state.collectAsState()
+
+    LaunchedEffect(store) {
+        store.effects.collect { effect ->
+            when (effect) {
+                is FinishWorkoutEffect.NavigateToRoutineBuilder -> onSaveAsRoutine(effect.routineId)
+            }
+        }
+    }
 
     Column(modifier = Modifier.fillMaxSize().testTag("finish_workout_screen")) {
         AppTopBar(
@@ -62,7 +72,11 @@ fun FinishWorkoutScreen(
 
         val summary = state.summary
         if (summary != null) {
-            WorkoutSummaryContent(summary = summary, onDone = onDone)
+            WorkoutSummaryContent(
+                summary = summary,
+                onSaveAsRoutine = { store.onIntent(FinishWorkoutIntent.SaveAsRoutine) },
+                onDone = onDone,
+            )
         } else {
             FinishWorkoutForm(state = state, onIntent = store::onIntent)
         }
@@ -185,7 +199,7 @@ private fun AddPhotoDialog(onConfirm: (String) -> Unit, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun WorkoutSummaryContent(summary: WorkoutSummary, onDone: () -> Unit) {
+private fun WorkoutSummaryContent(summary: WorkoutSummary, onSaveAsRoutine: () -> Unit, onDone: () -> Unit) {
     val spacing = LocalSpacing.current
     Column(
         modifier = Modifier.fillMaxSize().padding(spacing.md).testTag("finish_workout_summary"),
@@ -222,6 +236,11 @@ private fun WorkoutSummaryContent(summary: WorkoutSummary, onDone: () -> Unit) {
             }
         }
 
+        SecondaryButton(
+            text = "Save as Routine",
+            onClick = onSaveAsRoutine,
+            modifier = Modifier.fillMaxWidth().testTag("save_as_routine_button"),
+        )
         PrimaryButton(
             text = "Done",
             onClick = onDone,
