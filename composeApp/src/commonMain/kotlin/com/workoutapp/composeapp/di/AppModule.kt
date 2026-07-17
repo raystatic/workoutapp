@@ -78,7 +78,7 @@ val appModule = module {
     single { WorkoutStore(get(), get(), get(), get(), get(), get()) }
     single { RestTimerStore(get()) } bind RestTimerController::class
     factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get()) }
-    factory { (workoutId: Long) -> FinishWorkoutStore(workoutId, get(), get(), get(), get(), get(), get()) }
+    factory { (workoutId: Long) -> FinishWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { (routineId: Long) -> RoutineBuilderStore(routineId, get(), get(), get(), get()) }
     factory { (exerciseId: Long) -> ExerciseDetailStore(exerciseId, get(), get()) }
     factory { AddCustomExerciseStore(get()) }

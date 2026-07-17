@@ -5,6 +5,9 @@ import com.workoutapp.composeapp.data.db.WorkoutPrivacy
 import com.workoutapp.composeapp.data.library.ExerciseRepository
 import com.workoutapp.composeapp.data.profile.UserProfileRepository
 import com.workoutapp.composeapp.data.progress.PersonalRecordRepository
+import com.workoutapp.composeapp.data.routines.RoutineExerciseRepository
+import com.workoutapp.composeapp.data.routines.RoutineRepository
+import com.workoutapp.composeapp.data.routines.RoutineSetRepository
 import com.workoutapp.composeapp.data.workout.PersonalRecordCandidate
 import com.workoutapp.composeapp.data.workout.PersonalRecordType
 import com.workoutapp.composeapp.data.workout.WorkoutExerciseRepository
@@ -12,12 +15,18 @@ import com.workoutapp.composeapp.data.workout.WorkoutRepository
 import com.workoutapp.composeapp.data.workout.WorkoutSetRepository
 import com.workoutapp.composeapp.db.Exercise
 import com.workoutapp.composeapp.db.PersonalRecord
+import com.workoutapp.composeapp.db.Routine
+import com.workoutapp.composeapp.db.RoutineExercise
+import com.workoutapp.composeapp.db.RoutineSet
 import com.workoutapp.composeapp.db.UserProfile
 import com.workoutapp.composeapp.db.Workout
 import com.workoutapp.composeapp.db.WorkoutExercise
 import com.workoutapp.composeapp.db.WorkoutSet
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import kotlin.test.Test
@@ -210,6 +219,84 @@ private class FakeUserProfileRepository(private var profile: UserProfile? = null
     override suspend fun delete(id: Long) = Unit
 }
 
+private class FakeRoutineRepository : RoutineRepository {
+    private val routines = MutableStateFlow(emptyList<Routine>())
+    private var nextId = 1L
+
+    override fun observeAll(): Flow<List<Routine>> = routines
+    override fun observeById(id: Long): Flow<Routine?> = routines.map { list -> list.firstOrNull { it.id == id } }
+
+    override suspend fun add(name: String, folderId: Long?, position: Long, notes: String?, updatedAt: Long): Long {
+        val id = nextId++
+        routines.update { it + Routine(id, name, folderId, position, notes, null, updatedAt, "PENDING") }
+        return id
+    }
+
+    override suspend fun update(id: Long, name: String, folderId: Long?, notes: String?, updatedAt: Long) =
+        error("not needed for these tests")
+
+    override suspend fun delete(id: Long) = Unit
+}
+
+private class FakeRoutineExerciseRepository : RoutineExerciseRepository {
+    private val exercisesFlow = MutableStateFlow(emptyList<RoutineExercise>())
+    private var nextId = 1L
+
+    override fun observeByRoutineId(routineId: Long): Flow<List<RoutineExercise>> =
+        exercisesFlow.map { list -> list.filter { it.routineId == routineId } }
+
+    override suspend fun add(
+        routineId: Long,
+        exerciseId: Long,
+        position: Long,
+        supersetGroup: String?,
+        restSeconds: Long?,
+        notes: String?,
+        updatedAt: Long,
+    ): Long {
+        val id = nextId++
+        exercisesFlow.update {
+            it + RoutineExercise(id, routineId, exerciseId, position, supersetGroup, restSeconds, notes, null, updatedAt, "PENDING")
+        }
+        return id
+    }
+
+    override suspend fun updatePosition(id: Long, position: Long) = error("not needed for these tests")
+    override suspend fun updateSupersetGroup(id: Long, supersetGroup: String?) = error("not needed for these tests")
+    override suspend fun updateRestSeconds(id: Long, restSeconds: Long?) = error("not needed for these tests")
+    override suspend fun updateNotes(id: Long, notes: String?) = error("not needed for these tests")
+    override suspend fun delete(id: Long) = Unit
+}
+
+private class FakeRoutineSetRepository : RoutineSetRepository {
+    private val setsFlow = MutableStateFlow(emptyList<RoutineSet>())
+    private var nextId = 1L
+
+    override fun observeByRoutineExerciseId(routineExerciseId: Long): Flow<List<RoutineSet>> =
+        setsFlow.map { list -> list.filter { it.routineExerciseId == routineExerciseId } }
+
+    override fun observeByRoutineId(routineId: Long): Flow<List<RoutineSet>> = setsFlow
+
+    override suspend fun add(
+        routineExerciseId: Long,
+        position: Long,
+        targetReps: Long?,
+        targetWeight: Double?,
+        setType: SetType,
+        updatedAt: Long,
+    ) {
+        setsFlow.update {
+            it + RoutineSet(nextId++, routineExerciseId, position, targetReps, targetWeight, setType, null, updatedAt, "PENDING")
+        }
+    }
+
+    override suspend fun update(id: Long, targetReps: Long?, targetWeight: Double?, setType: SetType, updatedAt: Long) =
+        error("not needed for these tests")
+
+    override suspend fun updatePosition(id: Long, position: Long) = error("not needed for these tests")
+    override suspend fun delete(id: Long) = Unit
+}
+
 class FinishWorkoutStoreTest {
     private fun newStore(
         workout: Workout? = workout(),
@@ -219,6 +306,9 @@ class FinishWorkoutStoreTest {
         personalRecordRepository: FakePersonalRecordRepository = FakePersonalRecordRepository(),
         userProfileRepository: FakeUserProfileRepository = FakeUserProfileRepository(),
         workoutRepository: FakeWorkoutRepository = FakeWorkoutRepository(workout),
+        routineRepository: FakeRoutineRepository = FakeRoutineRepository(),
+        routineExerciseRepository: FakeRoutineExerciseRepository = FakeRoutineExerciseRepository(),
+        routineSetRepository: FakeRoutineSetRepository = FakeRoutineSetRepository(),
     ) = FinishWorkoutStore(
         workoutId = workout?.id ?: 1L,
         workoutRepository = workoutRepository,
@@ -227,6 +317,9 @@ class FinishWorkoutStoreTest {
         exerciseRepository = FakeExerciseRepository(exercises),
         personalRecordRepository = personalRecordRepository,
         userProfileRepository = userProfileRepository,
+        routineRepository = routineRepository,
+        routineExerciseRepository = routineExerciseRepository,
+        routineSetRepository = routineSetRepository,
         dispatcher = UnconfinedTestDispatcher(),
     )
 
@@ -433,5 +526,56 @@ class FinishWorkoutStoreTest {
         store.onIntent(FinishWorkoutIntent.Save)
 
         assertEquals(listOf(1L), userProfileRepository.streakUpdates)
+    }
+
+    @Test
+    fun saveAsRoutine_copiesWorkoutExercisesAndSetsIntoANewRoutineNamedAfterTheWorkout() = runTest {
+        val routineRepository = FakeRoutineRepository()
+        val routineExerciseRepository = FakeRoutineExerciseRepository()
+        val routineSetRepository = FakeRoutineSetRepository()
+        val store = newStore(
+            workout = workout(name = "Leg Day"),
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, 0L)),
+            sets = listOf(
+                workoutSet(50L, 10L, 0L, reps = 8L, weight = 60.0, completed = true),
+                workoutSet(51L, 10L, 1L, reps = 6L, weight = 70.0, completed = false),
+            ),
+            routineRepository = routineRepository,
+            routineExerciseRepository = routineExerciseRepository,
+            routineSetRepository = routineSetRepository,
+        )
+
+        store.onIntent(FinishWorkoutIntent.SaveAsRoutine)
+
+        val routine = routineRepository.observeAll().first().single()
+        assertEquals("Leg Day", routine.name)
+
+        val routineExercise = routineExerciseRepository.observeByRoutineId(routine.id).first().single()
+        assertEquals(100L, routineExercise.exerciseId)
+        assertEquals(0L, routineExercise.position)
+
+        val routineSets = routineSetRepository.observeByRoutineExerciseId(routineExercise.id).first().sortedBy { it.position }
+        assertEquals(2, routineSets.size)
+        assertEquals(8L, routineSets[0].targetReps)
+        assertEquals(60.0, routineSets[0].targetWeight)
+        assertEquals(6L, routineSets[1].targetReps)
+        assertEquals(70.0, routineSets[1].targetWeight)
+    }
+
+    @Test
+    fun saveAsRoutine_sendsNavigateToRoutineBuilderEffectWithTheNewRoutineId() = runTest {
+        val routineRepository = FakeRoutineRepository()
+        val store = newStore(
+            workout = workout(name = "Push Day"),
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, 0L)),
+            sets = listOf(workoutSet(50L, 10L, 0L, reps = 8L, weight = 60.0, completed = true)),
+            routineRepository = routineRepository,
+        )
+
+        store.onIntent(FinishWorkoutIntent.SaveAsRoutine)
+
+        val effect = store.effects.first()
+        val routineId = routineRepository.observeAll().first().single().id
+        assertEquals(FinishWorkoutEffect.NavigateToRoutineBuilder(routineId), effect)
     }
 }
