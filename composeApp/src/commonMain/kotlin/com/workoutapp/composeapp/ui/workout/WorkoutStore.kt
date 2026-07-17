@@ -32,10 +32,13 @@ data class WorkoutState(
     val hasRoutines: Boolean get() = folders.any { it.routines.isNotEmpty() }
 }
 
+/** Names lifters can start a new routine from — shown as quick suggestions on the empty state. */
+val routineTemplateSuggestions: List<String> = listOf("Push Day", "Pull Day", "Leg Day")
+
 sealed interface WorkoutIntent : MviIntent {
     data object StartEmptyWorkout : WorkoutIntent
     data class StartRoutine(val routineId: Long) : WorkoutIntent
-    data object CreateRoutine : WorkoutIntent
+    data class CreateRoutine(val name: String = "New Routine") : WorkoutIntent
     data class EditRoutine(val routineId: Long) : WorkoutIntent
     data class DuplicateRoutine(val routineId: Long) : WorkoutIntent
     data class RequestDeleteRoutine(val routineId: Long) : WorkoutIntent
@@ -74,7 +77,7 @@ class WorkoutStore(
         when (intent) {
             WorkoutIntent.StartEmptyWorkout -> startEmptyWorkout()
             is WorkoutIntent.StartRoutine -> startRoutine(intent.routineId)
-            WorkoutIntent.CreateRoutine -> createRoutine()
+            is WorkoutIntent.CreateRoutine -> createRoutine(intent.name)
             is WorkoutIntent.EditRoutine -> sendEffect(WorkoutEffect.NavigateToRoutineBuilder(intent.routineId))
             is WorkoutIntent.DuplicateRoutine -> duplicateRoutine(intent.routineId)
             is WorkoutIntent.RequestDeleteRoutine -> setState { it.copy(routineIdPendingDelete = intent.routineId) }
@@ -124,10 +127,10 @@ class WorkoutStore(
         }
     }
 
-    private fun createRoutine() {
+    private fun createRoutine(name: String) {
         scope.launch {
             val now = currentTimeMillis()
-            val routineId = routineRepository.add(name = "New Routine", position = nextRoutinePosition(), updatedAt = now)
+            val routineId = routineRepository.add(name = name, position = nextRoutinePosition(), updatedAt = now)
             sendEffect(WorkoutEffect.NavigateToRoutineBuilder(routineId))
         }
     }

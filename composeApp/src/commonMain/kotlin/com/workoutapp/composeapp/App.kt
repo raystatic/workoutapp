@@ -1,5 +1,7 @@
 package com.workoutapp.composeapp
 
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
@@ -23,6 +25,7 @@ import com.workoutapp.composeapp.ui.exercisedetail.ExerciseDetailScreen
 import com.workoutapp.composeapp.ui.finishworkout.FinishWorkoutScreen
 import com.workoutapp.composeapp.ui.profile.ProfileScreen
 import com.workoutapp.composeapp.ui.routinebuilder.RoutineBuilderScreen
+import com.workoutapp.composeapp.ui.walkthrough.WalkthroughScreen
 import com.workoutapp.composeapp.ui.workout.WorkoutScreen
 
 /**
@@ -40,105 +43,109 @@ object AppInfo {
 @Composable
 fun App() {
     WorkoutAppTheme {
-        val navController = rememberNavController()
-        val backStackEntry by navController.currentBackStackEntryAsState()
-        val currentRoute = backStackEntry?.destination?.route
+        Box(modifier = Modifier.fillMaxSize()) {
+            val navController = rememberNavController()
+            val backStackEntry by navController.currentBackStackEntryAsState()
+            val currentRoute = backStackEntry?.destination?.route
 
-        Scaffold(
-            bottomBar = {
-                AppBottomTabBar(
-                    items = AppDestination.bottomTabs.map { BottomTabItem(it.route, it.label) },
-                    selectedRoute = currentRoute,
-                    onSelect = { route ->
-                        if (currentRoute != route) {
-                            navController.navigate(route) {
-                                popUpTo(navController.graph.startDestinationId) {
-                                    saveState = true
+            Scaffold(
+                bottomBar = {
+                    AppBottomTabBar(
+                        items = AppDestination.bottomTabs.map { BottomTabItem(it.route, it.label) },
+                        selectedRoute = currentRoute,
+                        onSelect = { route ->
+                            if (currentRoute != route) {
+                                navController.navigate(route) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
                                 }
-                                launchSingleTop = true
-                                restoreState = true
                             }
-                        }
-                    },
-                )
-            },
-        ) { contentPadding ->
-            NavHost(
-                navController = navController,
-                startDestination = AppDestination.Workout.route,
-                modifier = Modifier.padding(contentPadding),
-            ) {
-                composable(AppDestination.Workout.route) {
-                    WorkoutScreen(
-                        onWorkoutStarted = { workoutId ->
-                            navController.navigate(AppDestination.ActiveWorkout.route(workoutId))
-                        },
-                        onOpenRoutineBuilder = { routineId ->
-                            navController.navigate(AppDestination.RoutineBuilder.route(routineId))
                         },
                     )
-                }
-                composable(AppDestination.Profile.route) {
-                    ProfileScreen(
-                        onOpenComponentCatalog = {
-                            navController.navigate(AppDestination.ComponentCatalog.route)
-                        },
-                    )
-                }
-                composable(AppDestination.ComponentCatalog.route) { ComponentCatalogScreen() }
-                composable(
-                    route = AppDestination.ActiveWorkout.route,
-                    arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
-                ) { backStackEntry ->
-                    val workoutId = backStackEntry.arguments?.read { getLong("workoutId") } ?: 0L
-                    ActiveWorkoutScreen(
-                        workoutId = workoutId,
-                        onBack = { navController.popBackStack() },
-                        onFinish = { navController.navigate(AppDestination.FinishWorkout.route(it)) },
-                        onOpenExerciseDetail = { navController.navigate(AppDestination.ExerciseDetail.route(it)) },
-                        onAddCustomExercise = { navController.navigate(AppDestination.AddCustomExercise.route) },
-                    )
-                }
-                composable(
-                    route = AppDestination.FinishWorkout.route,
-                    arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
-                ) { backStackEntry ->
-                    val workoutId = backStackEntry.arguments?.read { getLong("workoutId") } ?: 0L
-                    FinishWorkoutScreen(
-                        workoutId = workoutId,
-                        onBack = { navController.popBackStack() },
-                        onDone = { navController.popBackStack(AppDestination.Workout.route, false) },
-                        onSaveAsRoutine = { routineId ->
-                            navController.navigate(AppDestination.RoutineBuilder.route(routineId))
-                        },
-                    )
-                }
-                composable(
-                    route = AppDestination.RoutineBuilder.route,
-                    arguments = listOf(navArgument("routineId") { type = NavType.LongType }),
-                ) { backStackEntry ->
-                    val routineId = backStackEntry.arguments?.read { getLong("routineId") } ?: 0L
-                    RoutineBuilderScreen(
-                        routineId = routineId,
-                        onDone = { navController.popBackStack() },
-                        onOpenExerciseDetail = { navController.navigate(AppDestination.ExerciseDetail.route(it)) },
-                        onAddCustomExercise = { navController.navigate(AppDestination.AddCustomExercise.route) },
-                    )
-                }
-                composable(
-                    route = AppDestination.ExerciseDetail.route,
-                    arguments = listOf(navArgument("exerciseId") { type = NavType.LongType }),
-                ) { backStackEntry ->
-                    val exerciseId = backStackEntry.arguments?.read { getLong("exerciseId") } ?: 0L
-                    ExerciseDetailScreen(
-                        exerciseId = exerciseId,
-                        onBack = { navController.popBackStack() },
-                    )
-                }
-                composable(AppDestination.AddCustomExercise.route) {
-                    AddCustomExerciseScreen(onDone = { navController.popBackStack() })
+                },
+            ) { contentPadding ->
+                NavHost(
+                    navController = navController,
+                    startDestination = AppDestination.Workout.route,
+                    modifier = Modifier.padding(contentPadding),
+                ) {
+                    composable(AppDestination.Workout.route) {
+                        WorkoutScreen(
+                            onWorkoutStarted = { workoutId ->
+                                navController.navigate(AppDestination.ActiveWorkout.route(workoutId))
+                            },
+                            onOpenRoutineBuilder = { routineId ->
+                                navController.navigate(AppDestination.RoutineBuilder.route(routineId))
+                            },
+                        )
+                    }
+                    composable(AppDestination.Profile.route) {
+                        ProfileScreen(
+                            onOpenComponentCatalog = {
+                                navController.navigate(AppDestination.ComponentCatalog.route)
+                            },
+                        )
+                    }
+                    composable(AppDestination.ComponentCatalog.route) { ComponentCatalogScreen() }
+                    composable(
+                        route = AppDestination.ActiveWorkout.route,
+                        arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val workoutId = backStackEntry.arguments?.read { getLong("workoutId") } ?: 0L
+                        ActiveWorkoutScreen(
+                            workoutId = workoutId,
+                            onBack = { navController.popBackStack() },
+                            onFinish = { navController.navigate(AppDestination.FinishWorkout.route(it)) },
+                            onOpenExerciseDetail = { navController.navigate(AppDestination.ExerciseDetail.route(it)) },
+                            onAddCustomExercise = { navController.navigate(AppDestination.AddCustomExercise.route) },
+                        )
+                    }
+                    composable(
+                        route = AppDestination.FinishWorkout.route,
+                        arguments = listOf(navArgument("workoutId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val workoutId = backStackEntry.arguments?.read { getLong("workoutId") } ?: 0L
+                        FinishWorkoutScreen(
+                            workoutId = workoutId,
+                            onBack = { navController.popBackStack() },
+                            onDone = { navController.popBackStack(AppDestination.Workout.route, false) },
+                            onSaveAsRoutine = { routineId ->
+                                navController.navigate(AppDestination.RoutineBuilder.route(routineId))
+                            },
+                        )
+                    }
+                    composable(
+                        route = AppDestination.RoutineBuilder.route,
+                        arguments = listOf(navArgument("routineId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val routineId = backStackEntry.arguments?.read { getLong("routineId") } ?: 0L
+                        RoutineBuilderScreen(
+                            routineId = routineId,
+                            onDone = { navController.popBackStack() },
+                            onOpenExerciseDetail = { navController.navigate(AppDestination.ExerciseDetail.route(it)) },
+                            onAddCustomExercise = { navController.navigate(AppDestination.AddCustomExercise.route) },
+                        )
+                    }
+                    composable(
+                        route = AppDestination.ExerciseDetail.route,
+                        arguments = listOf(navArgument("exerciseId") { type = NavType.LongType }),
+                    ) { backStackEntry ->
+                        val exerciseId = backStackEntry.arguments?.read { getLong("exerciseId") } ?: 0L
+                        ExerciseDetailScreen(
+                            exerciseId = exerciseId,
+                            onBack = { navController.popBackStack() },
+                        )
+                    }
+                    composable(AppDestination.AddCustomExercise.route) {
+                        AddCustomExerciseScreen(onDone = { navController.popBackStack() })
+                    }
                 }
             }
+
+            WalkthroughScreen()
         }
     }
 }
