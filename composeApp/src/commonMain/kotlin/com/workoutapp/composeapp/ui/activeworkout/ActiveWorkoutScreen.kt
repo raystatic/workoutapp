@@ -85,7 +85,13 @@ fun ActiveWorkoutScreen(
         AppTopBar(
             title = "Active Workout",
             navigationIcon = {
-                IconButton(onClick = onBack, modifier = Modifier.testTag("active_workout_back_button")) {
+                IconButton(
+                    onClick = {
+                        store.onIntent(ActiveWorkoutIntent.Abandon)
+                        onBack()
+                    },
+                    modifier = Modifier.testTag("active_workout_back_button"),
+                ) {
                     Text("←")
                 }
             },

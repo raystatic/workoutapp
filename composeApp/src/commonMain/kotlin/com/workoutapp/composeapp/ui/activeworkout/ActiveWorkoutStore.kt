@@ -1,5 +1,10 @@
 package com.workoutapp.composeapp.ui.activeworkout
 
+import com.workoutapp.composeapp.data.analytics.AnalyticsEvent
+import com.workoutapp.composeapp.data.analytics.AnalyticsSink
+import com.workoutapp.composeapp.data.analytics.RestTimerExperimentRepository
+import com.workoutapp.composeapp.data.analytics.restTimerUsedParams
+import com.workoutapp.composeapp.data.analytics.workoutAbandonedParams
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.currentTimeMillis
 import com.workoutapp.composeapp.data.library.ExerciseRepository
@@ -74,6 +79,8 @@ sealed interface ActiveWorkoutIntent : MviIntent {
     data class GroupWithNextExercise(val workoutExerciseId: Long) : ActiveWorkoutIntent
     data class RemoveFromSuperset(val workoutExerciseId: Long) : ActiveWorkoutIntent
     data class CycleRestOverride(val workoutExerciseId: Long) : ActiveWorkoutIntent
+    /** Fired when the user backs out of an in-progress (unfinished) workout. */
+    data object Abandon : ActiveWorkoutIntent
 }
 
 /** Rest-timer override presets cycled by [ActiveWorkoutIntent.CycleRestOverride]: default, then 30s..240s, then back. */
@@ -106,6 +113,8 @@ class ActiveWorkoutStore(
     private val previousSetResolver: PreviousSetResolver,
     private val restTimerController: RestTimerController,
     private val restTimerSettingsRepository: RestTimerSettingsRepository,
+    private val analyticsSink: AnalyticsSink,
+    private val restTimerExperimentRepository: RestTimerExperimentRepository,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : StoreViewModel<ActiveWorkoutState, ActiveWorkoutIntent, ActiveWorkoutEffect>(
     ActiveWorkoutState(workoutId = workoutId),
@@ -175,7 +184,13 @@ class ActiveWorkoutStore(
             is ActiveWorkoutIntent.GroupWithNextExercise -> groupWithNextExercise(intent.workoutExerciseId)
             is ActiveWorkoutIntent.RemoveFromSuperset -> removeFromSuperset(intent.workoutExerciseId)
             is ActiveWorkoutIntent.CycleRestOverride -> cycleRestOverride(intent.workoutExerciseId)
+            ActiveWorkoutIntent.Abandon -> recordAbandon()
         }
+    }
+
+    private fun recordAbandon() {
+        val elapsedSeconds = ((currentTimeMillis() - (state.value.startedAt ?: return)) / 1000).coerceAtLeast(0)
+        analyticsSink.logEvent(AnalyticsEvent.WORKOUT_ABANDONED, workoutAbandonedParams(elapsedSeconds))
     }
 
     private fun addSet(workoutExerciseId: Long) {
@@ -204,6 +219,12 @@ class ActiveWorkoutStore(
                 val defaultSeconds = restTimerSettingsRepository.getDefaultRestSeconds()
                 val seconds = resolveRestSeconds(exerciseUi.restSeconds, defaultSeconds)
                 restTimerController.start(exerciseUi.exerciseId, seconds)
+                val source = if (exerciseUi.restSeconds != null) "override" else "default"
+                val variant = restTimerExperimentRepository.getVariant()
+                analyticsSink.logEvent(
+                    AnalyticsEvent.REST_TIMER_USED,
+                    restTimerUsedParams(exerciseUi.exerciseId, seconds, source, variant.name),
+                )
             }
         }
     }

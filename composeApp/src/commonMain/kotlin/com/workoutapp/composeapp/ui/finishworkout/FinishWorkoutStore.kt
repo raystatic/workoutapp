@@ -1,5 +1,11 @@
 package com.workoutapp.composeapp.ui.finishworkout
 
+import com.workoutapp.composeapp.data.analytics.AnalyticsEvent
+import com.workoutapp.composeapp.data.analytics.AnalyticsSink
+import com.workoutapp.composeapp.data.analytics.logDurationParams
+import com.workoutapp.composeapp.data.analytics.routineCreatedParams
+import com.workoutapp.composeapp.data.analytics.routineSaveFunnelParams
+import com.workoutapp.composeapp.data.analytics.workoutCompletedParams
 import com.workoutapp.composeapp.data.db.WorkoutPrivacy
 import com.workoutapp.composeapp.data.db.currentTimeMillis
 import com.workoutapp.composeapp.data.library.ExerciseRepository
@@ -80,6 +86,7 @@ class FinishWorkoutStore(
     private val routineRepository: RoutineRepository,
     private val routineExerciseRepository: RoutineExerciseRepository,
     private val routineSetRepository: RoutineSetRepository,
+    private val analyticsSink: AnalyticsSink,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : StoreViewModel<FinishWorkoutState, FinishWorkoutIntent, FinishWorkoutEffect>(
     FinishWorkoutState(workoutId = workoutId),
@@ -178,6 +185,11 @@ class FinishWorkoutStore(
                     ),
                 )
             }
+            analyticsSink.logEvent(
+                AnalyticsEvent.WORKOUT_COMPLETED,
+                workoutCompletedParams(completedTimestamps.size.toLong(), streak, prHits.size),
+            )
+            analyticsSink.logEvent(AnalyticsEvent.LOG_DURATION, logDurationParams((finishedAt - current.startedAt) / 1000))
         }
     }
 
@@ -213,6 +225,8 @@ class FinishWorkoutStore(
                 }
             }
             sendEffect(FinishWorkoutEffect.NavigateToRoutineBuilder(routineId))
+            analyticsSink.logEvent(AnalyticsEvent.ROUTINE_CREATED, routineCreatedParams(source = "save_as_routine"))
+            analyticsSink.logEvent(AnalyticsEvent.ROUTINE_SAVE_FUNNEL, routineSaveFunnelParams(step = "completed"))
         }
     }
 }
