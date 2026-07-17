@@ -1,5 +1,6 @@
 package com.workoutapp.composeapp.ui.workout
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -63,7 +64,7 @@ fun WorkoutScreen(
         )
         SecondaryButton(
             text = "+ New Routine",
-            onClick = { store.onIntent(WorkoutIntent.CreateRoutine) },
+            onClick = { store.onIntent(WorkoutIntent.CreateRoutine()) },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = spacing.md, vertical = spacing.xs)
@@ -77,6 +78,22 @@ fun WorkoutScreen(
                     message = "Build a routine to plan your sessions, or start an empty " +
                         "workout above to log freestyle.",
                     modifier = Modifier.align(Alignment.Center).testTag("no_routines_empty_state"),
+                    action = {
+                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                            Text("Or start from a template:", style = MaterialTheme.typography.labelMedium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(spacing.xs)) {
+                                routineTemplateSuggestions.forEach { template ->
+                                    SecondaryButton(
+                                        text = template,
+                                        onClick = { store.onIntent(WorkoutIntent.CreateRoutine(name = template)) },
+                                        modifier = Modifier.testTag(
+                                            "template_suggestion_${template.replace(" ", "_").lowercase()}",
+                                        ),
+                                    )
+                                }
+                            }
+                        }
+                    },
                 )
             } else {
                 val showFolderHeaders = state.folders.size > 1 || state.folders.single().folderId != null

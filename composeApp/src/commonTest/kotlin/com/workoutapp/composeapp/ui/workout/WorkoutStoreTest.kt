@@ -347,10 +347,22 @@ class WorkoutStoreTest {
         val routineRepository = FakeRoutineRepository()
         val store = newStore(routineRepository = routineRepository)
 
-        store.onIntent(WorkoutIntent.CreateRoutine)
+        store.onIntent(WorkoutIntent.CreateRoutine())
         val effect = store.effects.first()
 
         assertEquals(listOf("New Routine"), routineRepository.addCalls)
+        assertEquals(WorkoutEffect.NavigateToRoutineBuilder(1L), effect)
+    }
+
+    @Test
+    fun createRoutine_withATemplateName_usesThatNameInsteadOfTheDefault() = runTest {
+        val routineRepository = FakeRoutineRepository()
+        val store = newStore(routineRepository = routineRepository)
+
+        store.onIntent(WorkoutIntent.CreateRoutine(name = "Push Day"))
+        val effect = store.effects.first()
+
+        assertEquals(listOf("Push Day"), routineRepository.addCalls)
         assertEquals(WorkoutEffect.NavigateToRoutineBuilder(1L), effect)
     }
 
