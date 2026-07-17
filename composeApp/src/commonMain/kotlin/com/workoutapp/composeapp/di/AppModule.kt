@@ -1,5 +1,7 @@
 package com.workoutapp.composeapp.di
 
+import com.workoutapp.composeapp.data.analytics.RestTimerExperimentRepository
+import com.workoutapp.composeapp.data.analytics.RestTimerExperimentRepositoryImpl
 import com.workoutapp.composeapp.data.db.DatabaseDriverFactory
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.WorkoutPrivacy
@@ -78,12 +80,13 @@ val appModule = module {
     single<UserProfileRepository> { UserProfileRepositoryImpl(get()) }
     single<RestTimerSettingsRepository> { RestTimerSettingsRepositoryImpl(get()) }
     single<OnboardingRepository> { OnboardingRepositoryImpl(get()) }
+    single<RestTimerExperimentRepository> { RestTimerExperimentRepositoryImpl(get()) }
     single { PreviousSetResolver(get(), get()) }
-    single { WorkoutStore(get(), get(), get(), get(), get(), get()) }
+    single { WorkoutStore(get(), get(), get(), get(), get(), get(), get()) }
     single { WalkthroughStore(get()) }
     single { RestTimerStore(get()) } bind RestTimerController::class
-    factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get()) }
-    factory { (workoutId: Long) -> FinishWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { (workoutId: Long) -> ActiveWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get(), get(), get()) }
+    factory { (workoutId: Long) -> FinishWorkoutStore(workoutId, get(), get(), get(), get(), get(), get(), get(), get(), get(), get()) }
     factory { (routineId: Long) -> RoutineBuilderStore(routineId, get(), get(), get(), get()) }
     factory { (exerciseId: Long) -> ExerciseDetailStore(exerciseId, get(), get()) }
     factory { AddCustomExerciseStore(get()) }

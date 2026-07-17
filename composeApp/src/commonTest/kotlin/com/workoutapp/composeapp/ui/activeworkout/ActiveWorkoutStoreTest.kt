@@ -1,5 +1,8 @@
 package com.workoutapp.composeapp.ui.activeworkout
 
+import com.workoutapp.composeapp.data.analytics.AnalyticsSink
+import com.workoutapp.composeapp.data.analytics.RestTimerDefaultVariant
+import com.workoutapp.composeapp.data.analytics.RestTimerExperimentRepository
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.WorkoutPrivacy
 import com.workoutapp.composeapp.data.library.ExerciseRepository
@@ -208,6 +211,19 @@ private class FakeRestTimerSettingsRepository(private var defaultSeconds: Int = 
     }
 }
 
+private class FakeAnalyticsSink : AnalyticsSink {
+    val events = mutableListOf<Pair<String, Map<String, Any?>>>()
+    override fun logEvent(name: String, params: Map<String, Any?>) {
+        events += name to params
+    }
+}
+
+private class FakeRestTimerExperimentRepository(
+    private val variant: RestTimerDefaultVariant = RestTimerDefaultVariant.ON,
+) : RestTimerExperimentRepository {
+    override suspend fun getVariant(): RestTimerDefaultVariant = variant
+}
+
 class ActiveWorkoutStoreTest {
     private fun newStore(
         workout: Workout? = workout(1L),
@@ -219,6 +235,8 @@ class ActiveWorkoutStoreTest {
         otherSets: List<WorkoutSet> = emptyList(),
         restTimerController: FakeRestTimerController = FakeRestTimerController(),
         defaultRestSeconds: Int = 90,
+        analyticsSink: FakeAnalyticsSink = FakeAnalyticsSink(),
+        restTimerExperimentRepository: RestTimerExperimentRepository = FakeRestTimerExperimentRepository(),
     ): ActiveWorkoutStore {
         val workoutExerciseRepository = FakeWorkoutExerciseRepository(workoutExercises + otherWorkoutExercises)
         val workoutSetRepository = FakeWorkoutSetRepository(sets + otherSets)
@@ -231,6 +249,8 @@ class ActiveWorkoutStoreTest {
             previousSetResolver = PreviousSetResolver(workoutExerciseRepository, workoutSetRepository),
             restTimerController = restTimerController,
             restTimerSettingsRepository = FakeRestTimerSettingsRepository(defaultRestSeconds),
+            analyticsSink = analyticsSink,
+            restTimerExperimentRepository = restTimerExperimentRepository,
             dispatcher = UnconfinedTestDispatcher(),
         )
     }
@@ -396,6 +416,75 @@ class ActiveWorkoutStoreTest {
         store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
 
         assertEquals(listOf(100L to 45), restTimerController.startCalls)
+    }
+
+    @Test
+    fun toggleSetComplete_fromIncompleteToComplete_logsRestTimerUsedWithDefaultSourceAndVariant() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L, completed = false)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            defaultRestSeconds = 90,
+            analyticsSink = analyticsSink,
+            restTimerExperimentRepository = FakeRestTimerExperimentRepository(RestTimerDefaultVariant.OFF),
+        )
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
+
+        assertEquals(
+            listOf(
+                "rest_timer_used" to mapOf(
+                    "exercise_id" to 100L,
+                    "seconds" to 90,
+                    "source" to "default",
+                    "experiment_variant" to "OFF",
+                ),
+            ),
+            analyticsSink.events,
+        )
+    }
+
+    @Test
+    fun toggleSetComplete_withPerExerciseOverride_logsRestTimerUsedWithOverrideSource() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L, restSeconds = 45L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L, completed = false)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            analyticsSink = analyticsSink,
+        )
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
+
+        assertEquals("override", analyticsSink.events.single().second["source"])
+    }
+
+    @Test
+    fun toggleSetComplete_fromCompleteToIncomplete_doesNotLogRestTimerUsed() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val store = newStore(
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, position = 0L)),
+            sets = listOf(workoutSet(50L, 10L, position = 0L, completed = true)),
+            exercises = listOf(exercise(100L, "Bench Press")),
+            analyticsSink = analyticsSink,
+        )
+
+        store.onIntent(ActiveWorkoutIntent.ToggleSetComplete(50L))
+
+        assertTrue(analyticsSink.events.isEmpty())
+    }
+
+    @Test
+    fun abandon_logsWorkoutAbandonedWithElapsedSeconds() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val store = newStore(workout = workout(1L, startedAt = 0L), analyticsSink = analyticsSink)
+
+        store.onIntent(ActiveWorkoutIntent.Abandon)
+
+        val (name, params) = analyticsSink.events.single()
+        assertEquals("workout_abandoned", name)
+        assertTrue((params["elapsed_seconds"] as Long) >= 0L)
     }
 
     @Test

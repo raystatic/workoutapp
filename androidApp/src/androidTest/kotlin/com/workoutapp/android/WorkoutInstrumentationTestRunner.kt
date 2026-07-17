@@ -2,9 +2,11 @@ package com.workoutapp.android
 
 import android.app.Application
 import androidx.test.runner.AndroidJUnitRunner
+import com.workoutapp.composeapp.data.analytics.AnalyticsSink
 import com.workoutapp.composeapp.data.onboarding.OnboardingRepository
 import kotlinx.coroutines.runBlocking
 import org.koin.core.context.GlobalContext
+import org.koin.dsl.module
 
 /**
  * Test-only instrumentation runner. Right after [WorkoutApplication.onCreate] starts Koin,
@@ -13,6 +15,10 @@ import org.koin.core.context.GlobalContext
  * content, with no first-run overlay in front of it. [WalkthroughFlowTest] is the one test
  * that exercises the real fresh-install path — it flips the flag back itself and restores
  * it afterwards, so later tests in the same run are unaffected regardless of execution order.
+ *
+ * This also swaps in a shared [FakeAnalyticsSink] before any screen resolves [AnalyticsSink]
+ * from Koin, so [AnalyticsInstrumentedTest] can inspect fired events instead of them going to
+ * the real (logcat) sink.
  */
 class WorkoutInstrumentationTestRunner : AndroidJUnitRunner() {
     override fun callApplicationOnCreate(app: Application) {
@@ -20,5 +26,9 @@ class WorkoutInstrumentationTestRunner : AndroidJUnitRunner() {
         runBlocking {
             GlobalContext.get().get<OnboardingRepository>().setHasSeenWalkthrough(true)
         }
+        GlobalContext.get().loadModules(
+            listOf(module { single<AnalyticsSink> { FakeAnalyticsSink() } }),
+            allowOverride = true,
+        )
     }
 }

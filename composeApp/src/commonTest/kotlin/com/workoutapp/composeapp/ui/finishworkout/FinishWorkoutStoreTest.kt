@@ -1,5 +1,6 @@
 package com.workoutapp.composeapp.ui.finishworkout
 
+import com.workoutapp.composeapp.data.analytics.AnalyticsSink
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.WorkoutPrivacy
 import com.workoutapp.composeapp.data.library.ExerciseRepository
@@ -297,6 +298,13 @@ private class FakeRoutineSetRepository : RoutineSetRepository {
     override suspend fun delete(id: Long) = Unit
 }
 
+private class FakeAnalyticsSink : AnalyticsSink {
+    val events = mutableListOf<Pair<String, Map<String, Any?>>>()
+    override fun logEvent(name: String, params: Map<String, Any?>) {
+        events += name to params
+    }
+}
+
 class FinishWorkoutStoreTest {
     private fun newStore(
         workout: Workout? = workout(),
@@ -309,6 +317,7 @@ class FinishWorkoutStoreTest {
         routineRepository: FakeRoutineRepository = FakeRoutineRepository(),
         routineExerciseRepository: FakeRoutineExerciseRepository = FakeRoutineExerciseRepository(),
         routineSetRepository: FakeRoutineSetRepository = FakeRoutineSetRepository(),
+        analyticsSink: FakeAnalyticsSink = FakeAnalyticsSink(),
     ) = FinishWorkoutStore(
         workoutId = workout?.id ?: 1L,
         workoutRepository = workoutRepository,
@@ -320,6 +329,7 @@ class FinishWorkoutStoreTest {
         routineRepository = routineRepository,
         routineExerciseRepository = routineExerciseRepository,
         routineSetRepository = routineSetRepository,
+        analyticsSink = analyticsSink,
         dispatcher = UnconfinedTestDispatcher(),
     )
 
@@ -526,6 +536,54 @@ class FinishWorkoutStoreTest {
         store.onIntent(FinishWorkoutIntent.Save)
 
         assertEquals(listOf(1L), userProfileRepository.streakUpdates)
+    }
+
+    @Test
+    fun save_logsWorkoutCompletedAndLogDurationWithComputedValues() = runTest {
+        val day = 20L
+        val dayMillis = day * 86_400_000L
+        val analyticsSink = FakeAnalyticsSink()
+        val workoutRepository = FakeWorkoutRepository(
+            workout = workout(startedAt = dayMillis),
+            seedCompletedTimestamps = listOf(dayMillis - 86_400_000L),
+        )
+        val store = newStore(
+            workout = workout(startedAt = dayMillis),
+            workoutRepository = workoutRepository,
+            analyticsSink = analyticsSink,
+        )
+        store.onIntent(FinishWorkoutIntent.UpdateDurationMinutes("45"))
+
+        store.onIntent(FinishWorkoutIntent.Save)
+
+        assertEquals(
+            listOf(
+                "workout_completed" to mapOf("workout_count" to 2L, "streak" to 2L, "pr_count" to 0),
+                "log_duration" to mapOf("duration_seconds" to 45L * 60),
+            ),
+            analyticsSink.events,
+        )
+    }
+
+    @Test
+    fun saveAsRoutine_logsRoutineCreatedAndSaveFunnelCompleted() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val store = newStore(
+            workout = workout(name = "Leg Day"),
+            workoutExercises = listOf(workoutExercise(10L, 1L, 100L, 0L)),
+            sets = listOf(workoutSet(50L, 10L, 0L, reps = 8L, weight = 60.0, completed = true)),
+            analyticsSink = analyticsSink,
+        )
+
+        store.onIntent(FinishWorkoutIntent.SaveAsRoutine)
+
+        assertEquals(
+            listOf(
+                "routine_created" to mapOf("source" to "save_as_routine"),
+                "routine_save_funnel" to mapOf("step" to "completed"),
+            ),
+            analyticsSink.events,
+        )
     }
 
     @Test

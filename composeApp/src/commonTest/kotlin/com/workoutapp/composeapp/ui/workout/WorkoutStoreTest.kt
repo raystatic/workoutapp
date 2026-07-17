@@ -1,5 +1,6 @@
 package com.workoutapp.composeapp.ui.workout
 
+import com.workoutapp.composeapp.data.analytics.AnalyticsSink
 import com.workoutapp.composeapp.data.db.SetType
 import com.workoutapp.composeapp.data.db.WorkoutPrivacy
 import com.workoutapp.composeapp.data.routines.RoutineExerciseRepository
@@ -232,6 +233,13 @@ private class FakeWorkoutSetRepository : WorkoutSetRepository {
 private fun routine(id: Long, name: String, folderId: Long? = null) =
     Routine(id, name, folderId, 0L, null, null, 0L, "PENDING")
 
+private class FakeAnalyticsSink : AnalyticsSink {
+    val events = mutableListOf<Pair<String, Map<String, Any?>>>()
+    override fun logEvent(name: String, params: Map<String, Any?>) {
+        events += name to params
+    }
+}
+
 class WorkoutStoreTest {
     private fun newStore(
         routineRepository: RoutineRepository = FakeRoutineRepository(),
@@ -240,6 +248,7 @@ class WorkoutStoreTest {
         routineSetRepository: RoutineSetRepository = FakeRoutineSetRepository(),
         workoutExerciseRepository: WorkoutExerciseRepository = FakeWorkoutExerciseRepository(),
         workoutSetRepository: WorkoutSetRepository = FakeWorkoutSetRepository(),
+        analyticsSink: FakeAnalyticsSink = FakeAnalyticsSink(),
     ) = WorkoutStore(
         routineRepository,
         workoutRepository,
@@ -247,6 +256,7 @@ class WorkoutStoreTest {
         routineSetRepository,
         workoutExerciseRepository,
         workoutSetRepository,
+        analyticsSink = analyticsSink,
         dispatcher = UnconfinedTestDispatcher(),
     )
 
@@ -286,6 +296,20 @@ class WorkoutStoreTest {
     }
 
     @Test
+    fun startEmptyWorkout_logsWorkoutStartedWithEmptySource() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val store = newStore(analyticsSink = analyticsSink)
+
+        store.onIntent(WorkoutIntent.StartEmptyWorkout)
+        store.effects.first()
+
+        assertEquals(
+            listOf("workout_started" to mapOf("source" to "empty", "routine_id" to null)),
+            analyticsSink.events,
+        )
+    }
+
+    @Test
     fun startRoutine_namesTheWorkoutAfterTheRoutine() = runTest {
         val workoutRepository = FakeWorkoutRepository()
         val routineRepository = FakeRoutineRepository(listOf(routine(5, "Push Day")))
@@ -296,6 +320,24 @@ class WorkoutStoreTest {
 
         assertEquals(listOf("Push Day"), workoutRepository.added)
         assertEquals(WorkoutEffect.NavigateToActiveWorkout(1L), effect)
+    }
+
+    @Test
+    fun startRoutine_logsWorkoutStartedAndRoutineUsedInLog() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val routineRepository = FakeRoutineRepository(listOf(routine(5, "Push Day")))
+        val store = newStore(routineRepository = routineRepository, analyticsSink = analyticsSink)
+
+        store.onIntent(WorkoutIntent.StartRoutine(5L))
+        store.effects.first()
+
+        assertEquals(
+            listOf(
+                "workout_started" to mapOf("source" to "routine", "routine_id" to 5L),
+                "routine_used_in_log" to mapOf("routine_id" to 5L),
+            ),
+            analyticsSink.events,
+        )
     }
 
     @Test
@@ -355,6 +397,17 @@ class WorkoutStoreTest {
     }
 
     @Test
+    fun createRoutine_logsRoutineCreatedWithBlankSource() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val store = newStore(analyticsSink = analyticsSink)
+
+        store.onIntent(WorkoutIntent.CreateRoutine())
+        store.effects.first()
+
+        assertEquals(listOf("routine_created" to mapOf("source" to "blank")), analyticsSink.events)
+    }
+
+    @Test
     fun createRoutine_withATemplateName_usesThatNameInsteadOfTheDefault() = runTest {
         val routineRepository = FakeRoutineRepository()
         val store = newStore(routineRepository = routineRepository)
@@ -398,6 +451,18 @@ class WorkoutStoreTest {
         assertEquals(1, copiedExercises.size)
         assertEquals(100L, copiedExercises.single().exerciseId)
         assertEquals(1, routineSetRepository.added.count { it == copiedExercises.single().id })
+    }
+
+    @Test
+    fun duplicateRoutine_logsRoutineCreatedWithDuplicateSource() = runTest {
+        val analyticsSink = FakeAnalyticsSink()
+        val routineRepository = FakeRoutineRepository(listOf(routine(5, "Push Day")))
+        val store = newStore(routineRepository = routineRepository, analyticsSink = analyticsSink)
+
+        store.onIntent(WorkoutIntent.DuplicateRoutine(5L))
+        routineRepository.observeAll().first { routines -> routines.any { it.name == "Push Day copy" } }
+
+        assertEquals(listOf("routine_created" to mapOf("source" to "duplicate")), analyticsSink.events)
     }
 
     @Test

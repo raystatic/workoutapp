@@ -1,5 +1,10 @@
 package com.workoutapp.composeapp.ui.workout
 
+import com.workoutapp.composeapp.data.analytics.AnalyticsEvent
+import com.workoutapp.composeapp.data.analytics.AnalyticsSink
+import com.workoutapp.composeapp.data.analytics.routineCreatedParams
+import com.workoutapp.composeapp.data.analytics.routineUsedInLogParams
+import com.workoutapp.composeapp.data.analytics.workoutStartedParams
 import com.workoutapp.composeapp.data.db.currentTimeMillis
 import com.workoutapp.composeapp.data.routines.RoutineExerciseRepository
 import com.workoutapp.composeapp.data.routines.RoutineRepository
@@ -64,6 +69,7 @@ class WorkoutStore(
     private val routineSetRepository: RoutineSetRepository,
     private val workoutExerciseRepository: WorkoutExerciseRepository,
     private val workoutSetRepository: WorkoutSetRepository,
+    private val analyticsSink: AnalyticsSink,
     dispatcher: CoroutineDispatcher = Dispatchers.Default,
 ) : StoreViewModel<WorkoutState, WorkoutIntent, WorkoutEffect>(WorkoutState(), dispatcher) {
 
@@ -91,6 +97,7 @@ class WorkoutStore(
             val now = currentTimeMillis()
             val workoutId = workoutRepository.add(name = "Empty Workout", startedAt = now, updatedAt = now)
             sendEffect(WorkoutEffect.NavigateToActiveWorkout(workoutId))
+            analyticsSink.logEvent(AnalyticsEvent.WORKOUT_STARTED, workoutStartedParams(routineId = null))
         }
     }
 
@@ -124,6 +131,8 @@ class WorkoutStore(
                 }
             }
             sendEffect(WorkoutEffect.NavigateToActiveWorkout(workoutId))
+            analyticsSink.logEvent(AnalyticsEvent.WORKOUT_STARTED, workoutStartedParams(routineId = routineId))
+            analyticsSink.logEvent(AnalyticsEvent.ROUTINE_USED_IN_LOG, routineUsedInLogParams(routineId))
         }
     }
 
@@ -132,6 +141,7 @@ class WorkoutStore(
             val now = currentTimeMillis()
             val routineId = routineRepository.add(name = name, position = nextRoutinePosition(), updatedAt = now)
             sendEffect(WorkoutEffect.NavigateToRoutineBuilder(routineId))
+            analyticsSink.logEvent(AnalyticsEvent.ROUTINE_CREATED, routineCreatedParams(source = "blank"))
         }
     }
 
@@ -170,6 +180,7 @@ class WorkoutStore(
                     )
                 }
             }
+            analyticsSink.logEvent(AnalyticsEvent.ROUTINE_CREATED, routineCreatedParams(source = "duplicate"))
         }
     }
 
